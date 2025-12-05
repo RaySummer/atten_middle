@@ -64,7 +64,12 @@ public class EmployeeService {
                 }
                 data.setPin(map.get("Pin"));
                 data.setBiologyNo(map.get("No"));
-                data.setSyncedFromDeviceSn(sn);
+                if (StringUtils.isNoneEmpty(data.getSyncedFromDeviceSn())) {
+                    String orgSn = data.getSyncedFromDeviceSn();
+                    data.setSyncedFromDeviceSn(orgSn + "," + sn);
+                } else {
+                    data.setSyncedFromDeviceSn(sn);
+                }
                 data.setType(Integer.parseInt(map.get("Type")));
                 data.setValid(Integer.parseInt(map.get("Valid")));
                 data.setFormat(map.get("Format"));

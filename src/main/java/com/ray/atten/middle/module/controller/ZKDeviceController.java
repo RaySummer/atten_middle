@@ -315,7 +315,7 @@ public class ZKDeviceController {
 
         response.append("USERINFOStamp=9999\n");
         response.append("ATTLOGStamp=9999\n");       // 设为 0，强制设备重新上传所有考勤记录
-//        response.append("OPERLOGStamp=0\n");      // 设为 0
+        response.append("OPERLOGStamp=0\n");      // 设为 0
         response.append("ErrorDelay=30\n");       // 联网失败重试间隔 (秒)
 
         response.append("Delay=10\n"); // 确保这里也设置了 Delay
@@ -327,9 +327,9 @@ public class ZKDeviceController {
 //            deviceConfigService.getLastOneLogByOperation()
             for (PendingCommandDto command : pendingCommands) {
 //                 C:${CmdID}:DATA${SP}QUERY${SP}USERINFO${SP}PIN=${XXX}
-//                转换成您代码中需要拼接的字符串，就是：
 //                C:12345:DATA QUERY USERINFO PIN=1001
-                response.append(command.getDeviceCommands()).append("\n");
+                log.debug(" command code : " + command.getDeviceCommands());
+                response.append(command.getCommands()).append("\n");
             }
         }
 
