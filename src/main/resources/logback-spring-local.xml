@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false" scan="false">
+
+    <property name="LOG_FILE_HOME" value="D://middleLogs"/>
+
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!--Only \\, \_, \%, \(, \), \t, \n, \r combinations are allowed as escape characters.-->
+            <!-- 在file和line前面需要添加at和全限定名，idea才支持任意class的跳转 -->
+            <pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS,GMT+8}] %-5p [%t] at %class.%method\(%file:%line\) - %m%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 根据文件大小和日期写日志文件 -->
+    <appender name="FILE_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE_HOME}/attendance_middle.%d{yyyyMMdd}.%i.log</fileNamePattern>
+            <!-- 文件大小触发重写新文件 -->
+            <maxFileSize>100MB</maxFileSize>
+            <!-- 日志文件数目 -->
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS,GMT+8}] %-5p [%t] at %class.%method\(%file:%line\) - %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 只保存项目内部的 info -->
+    <logger name="com.ray" level="DEBUG"/>
+
+    <root level="warn">
+        <appender-ref ref="console"/>
+        <appender-ref ref="FILE_LOG"/>
+    </root>
+
+</configuration>
