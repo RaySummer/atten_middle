@@ -31,31 +31,6 @@ public class SyncDataController {
      * 接收前端上传的员工数据，并推送到所有机器
      * 请求方式: POST (multipart/form-data)
      */
-//    @PostMapping("/employee")
-//    public String syncEmployee(
-//            @RequestParam("pin") String pin,
-//            @RequestParam("name") String name,
-//            @RequestParam(value = "fingerprint", required = false) String fingerprint,
-//            @RequestParam(value = "photo", required = false) MultipartFile photo) {
-//
-//        try {
-//            byte[] photoBytes = null;
-//            if (photo != null && !photo.isEmpty()) {
-//                photoBytes = photo.getBytes();
-//                // 建议检查图片大小，ADMS 传输大图片会很慢，最好控制在 30KB 以内
-//                if (photoBytes.length > 50 * 1024) {
-//                    return "Error: 照片太大，请压缩至50KB以内";
-//                }
-//            }
-//
-//            syncService.syncUserToAllDevices(pin, name, fingerprint, photoBytes);
-//            return "同步指令已生成，正在等待所有考勤机拉取...";
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return "Error: " + e.getMessage();
-//        }
-//    }
     @PostMapping("/sync-employee")
     public ResponseEntity<GlobalResponseBody> syncEmployee(@RequestBody List<EmployeeSyncRequest> empList) {
 
@@ -91,6 +66,15 @@ public class SyncDataController {
         syncService.syncUserToDevices(syncQueues);
 
         return ResponseEntity.ok(new GlobalResponseBody("200", "success", "保存成功，等待发送同步指令"));
+    }
+
+    @PostMapping("/sync-new-data")
+    public ResponseEntity<GlobalResponseBody> syncCheckNewData(@RequestBody List<String> deviceSns) {
+        if (deviceSns.isEmpty()) {
+            return ResponseEntity.ok(new GlobalResponseBody("500", "error", "考勤机序列号不能为空！！"));
+        }
+        syncService.checkNewDataSendToServer(deviceSns);
+        return ResponseEntity.ok(new GlobalResponseBody("200", "success", "已生成指令，等待客户端同步数据！"));
     }
 
 }

@@ -63,6 +63,16 @@ public class EmployeeSyncQueue {
 
     private LocalDateTime updateTime;
 
+    //生物识别类型0通用的 1指纹 2面部 9可见光面部
+    private String type;
+
+    private String cardNo;
+
+    //失败重试次数
+    private Integer retry;
+
+    //是否覆盖 0不覆盖返回错误，1覆盖
+    private Integer overwrite;
 
     @PrePersist
     public void prePersist() {
@@ -74,6 +84,8 @@ public class EmployeeSyncQueue {
         if (this.valid == null) this.valid = 1;
         if (this.fingerSize == null) this.fingerSize = 0;
         if (this.photoSize == null) this.photoSize = 0;
+        if (this.retry == null) this.retry = 0;
+        if (this.overwrite == null) this.overwrite = 0;
     }
 
     @PreUpdate

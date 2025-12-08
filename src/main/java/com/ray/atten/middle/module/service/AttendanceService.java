@@ -87,35 +87,39 @@ public class AttendanceService {
             String[] fields = line.split("\t");
 
             if (fields.length >= 4) { // 至少应有 PIN, Time, VerifyType, Status
-                AttendanceLog attendanceLog = new AttendanceLog();
-                attendanceLog.setDeviceSn(sn);
-                attendanceLog.setUserPin(fields[0].trim());
-                String verifyTime = fields[1].trim();
-                LocalDateTime verifiedTime = LocalDateTime.parse(verifyTime, FORMATTER);
-                attendanceLog.setVerifyTime(verifiedTime);
-                attendanceLog.setStatus(fields[2].trim());
-                attendanceLog.setVerifyType(fields[3].trim());
+                AttendanceLog attendanceLog = logRepo.findByDeviceSnAndUserPinAndVerifyTime();
+                if (attendanceLog == null) {
+                    attendanceLog = new AttendanceLog();
+                    attendanceLog.setDeviceSn(sn);
+                    attendanceLog.setUserPin(fields[0].trim());
+                    String verifyTime = fields[1].trim();
+                    LocalDateTime verifiedTime = LocalDateTime.parse(verifyTime, FORMATTER);
+                    attendanceLog.setVerifyTime(verifiedTime);
+                    attendanceLog.setStatus(fields[2].trim());
+                    attendanceLog.setVerifyType(fields[3].trim());
 
-                logRepo.save(attendanceLog);
-                logs.add(attendanceLog);
-                log.debug("Saved AttLog: " + attendanceLog);
+                    logRepo.save(attendanceLog);
+                    logs.add(attendanceLog);
+                    log.debug("Saved AttLog: " + attendanceLog.getUserPin() + " " + attendanceLog.getVerifyTime());
+                }
+                log.debug("This AttLog Exists " + attendanceLog.getUserPin() + " " + attendanceLog.getVerifyTime());
             }
         }
 
-        try {
-            if (!logs.isEmpty()) {
-                OperationLog operationLog = new OperationLog();
-                AttendanceLog attendanceLog = logs.get(logs.size());
-                operationLog.setDeviceSn(sn);
-                operationLog.setOperationTime(attendanceLog.getVerifyTime());
-                operationLog.setOperation(1);
-
-                operationLogRepository.save(operationLog);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error(" The Operation save error");
-        }
+//        try {
+//            if (!logs.isEmpty()) {
+//                OperationLog operationLog = new OperationLog();
+//                AttendanceLog attendanceLog = logs.get(logs.size() - 1);
+//                operationLog.setDeviceSn(sn);
+//                operationLog.setOperationTime(attendanceLog.getVerifyTime());
+//                operationLog.setOperation(1);
+//
+//                operationLogRepository.save(operationLog);
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            log.error(" The Operation save error");
+//        }
 
         return logs;
     }

@@ -28,4 +28,11 @@ public class AttendanceLog {
     private String status;    // 状态(0:上班, 1:下班等)
     private String verifyType;// 验证方式
 
+    private LocalDateTime createTime;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createTime = LocalDateTime.now();
+    }
+
 }

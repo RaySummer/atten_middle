@@ -245,16 +245,33 @@ public class SyncDataService {
                     if (StringUtils.isNoneEmpty(queue.getFingerprint())) {
                         //生成更新用户指纹指令
                         commandService.saveNewCommand(sn, generateUserFinger(queue));
+                        //生成登记指纹指令
+                        commandService.saveNewCommand(sn, generateFingerCMD(queue));
+
                     }
 
                     if (StringUtils.isNoneEmpty(queue.getPhotoBase64())) {
                         //生成更新用户照片模板指令
                         commandService.saveNewCommand(sn, generateUserPhoto(queue));
+                        //生成BIO指令，上传可见光图片
+                        commandService.saveNewCommand(sn, generateBIOCMD(queue));
+                        //生成登记人脸指令
+                        commandService.saveNewCommand(sn, generatePhotoCMD(queue));
                     }
                 }
                 queue.setStatus(1);
                 queueRepo.save(queue);
             }
+        }
+    }
+
+    public void checkNewDataSendToServer(List<String> deviceSns) {
+        if (deviceSns.isEmpty()) {
+            log.debug("没有序列号，无法生成命令");
+            return;
+        }
+        for (String sn : deviceSns) {
+            commandService.saveNewCommand(sn, "LOG");
         }
     }
 
@@ -281,10 +298,90 @@ public class SyncDataService {
         sb.append("Passwd=");
         sb.append(queue.getPasswd());
         sb.append("\t");
+        sb.append("Card=");
+        sb.append(queue.getCardNo());
+        sb.append("\t");
         sb.append("Grp=0");
         sb.append("\t");
         sb.append("Verify=");
         sb.append(queue.getVerify());
+        return sb.toString();
+    }
+
+    /**
+     * 拼接BIOData 指令
+     *
+     * @param queue
+     * @return
+     */
+    private String generateBIOCMD(EmployeeSyncQueue queue) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("DATA ");
+        sb.append("UPDATE ");
+        sb.append("BIODATA ");
+        sb.append("PIN=");
+        sb.append(queue.getPin());
+        sb.append("\t");
+        sb.append("Valid=1");
+        sb.append("\t");
+        sb.append("Duress=0");
+        sb.append("\t");
+        sb.append("NAME=");
+        sb.append(queue.getName());
+        sb.append("\t");
+        sb.append("Type=");
+        sb.append(queue.getType());
+        sb.append("\t");
+        sb.append("MajorVer=39\t");
+        sb.append("MinorVer=1\t");
+        sb.append("Format=0\t");
+        sb.append("Tmp=");
+        sb.append(queue.getPhotoBase64());
+        return sb.toString();
+    }
+
+    /**
+     * 拼接登記指紋 指令
+     *
+     * @param queue
+     * @return
+     */
+    private String generateFingerCMD(EmployeeSyncQueue queue) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("ENROLL_FP ");
+        sb.append("PIN=");
+        sb.append(queue.getPin());
+        sb.append("\t");
+        sb.append("FID=");
+        sb.append(queue.getFid());
+        sb.append("\t");
+        sb.append("RETRY=0");
+        sb.append(queue.getRetry());
+        sb.append("\t");
+        sb.append("OVERWRITE=");
+        sb.append(queue.getOverwrite());
+        return sb.toString();
+    }
+
+    private String generatePhotoCMD(EmployeeSyncQueue queue) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("ENROLL_BIO ");
+        sb.append("TYPE=9");
+        sb.append("\t");
+        sb.append("PIN=");
+        sb.append(queue.getPin());
+        sb.append("\t");
+        sb.append("tCardNo=");
+        sb.append(queue.getCardNo());
+        sb.append("\t");
+        sb.append("FID=");
+        sb.append(queue.getFid());
+        sb.append("\t");
+        sb.append("RETRY=0");
+        sb.append(queue.getRetry());
+        sb.append("\t");
+        sb.append("OVERWRITE=");
+        sb.append(queue.getOverwrite());
         return sb.toString();
     }
 

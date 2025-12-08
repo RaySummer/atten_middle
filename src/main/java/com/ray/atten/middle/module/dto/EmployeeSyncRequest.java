@@ -42,4 +42,12 @@ public class EmployeeSyncRequest implements Serializable {
 
     private Integer photoSize;
 
+    private String cardNo;
+
+    //失败重试次数
+    private Integer retry;
+
+    //是否覆盖 0不覆盖返回错误，1覆盖
+    private Integer overwrite;
+
 }
