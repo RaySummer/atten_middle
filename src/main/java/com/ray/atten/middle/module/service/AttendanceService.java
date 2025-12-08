@@ -57,8 +57,8 @@ public class AttendanceService {
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                     log.setVerifyTime(LocalDateTime.parse(parts[1], formatter));
 
-                    log.setStatus(parts[2]);
-                    log.setVerifyType(parts[3]);
+                    log.setStatus(Integer.valueOf(parts[2]));
+                    log.setVerifyType(Integer.valueOf(parts[3]));
 
                     logRepo.save(log);
                     count++;
@@ -87,16 +87,17 @@ public class AttendanceService {
             String[] fields = line.split("\t");
 
             if (fields.length >= 4) { // 至少应有 PIN, Time, VerifyType, Status
-                AttendanceLog attendanceLog = logRepo.findByDeviceSnAndUserPinAndVerifyTime();
+                String verifyTime = fields[1].trim();
+                LocalDateTime verifiedTime = LocalDateTime.parse(verifyTime, FORMATTER);
+                AttendanceLog attendanceLog = logRepo.findByDeviceSnAndUserPinAndVerifyTime(sn, fields[0].trim(), verifiedTime);
                 if (attendanceLog == null) {
                     attendanceLog = new AttendanceLog();
                     attendanceLog.setDeviceSn(sn);
                     attendanceLog.setUserPin(fields[0].trim());
-                    String verifyTime = fields[1].trim();
-                    LocalDateTime verifiedTime = LocalDateTime.parse(verifyTime, FORMATTER);
+
                     attendanceLog.setVerifyTime(verifiedTime);
-                    attendanceLog.setStatus(fields[2].trim());
-                    attendanceLog.setVerifyType(fields[3].trim());
+                    attendanceLog.setStatus(Integer.valueOf(fields[2].trim()));
+                    attendanceLog.setVerifyType(Integer.valueOf(fields[3].trim()));
 
                     logRepo.save(attendanceLog);
                     logs.add(attendanceLog);

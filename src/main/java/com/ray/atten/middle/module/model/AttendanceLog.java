@@ -25,8 +25,8 @@ public class AttendanceLog {
     private String userPin;    // 工号
     private String deviceSn;   // 设备序列号
     private LocalDateTime verifyTime; // 打卡时间
-    private String status;    // 状态(0:上班, 1:下班等)
-    private String verifyType;// 验证方式
+    private Integer status;    // 状态(0:上班, 1:下班等)
+    private Integer verifyType;// 验证方式
 
     private LocalDateTime createTime;
 
