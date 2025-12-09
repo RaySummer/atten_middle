@@ -39,12 +39,12 @@ public class DeviceCommandRequest implements Serializable {
     /**
      * Attendance time
      */
-    private LocalDateTime startTime;
+    private String startTime;
 
     /**
      * Attendance time
      */
-    private LocalDateTime endTime;
+    private String endTime;
 
     /**
      * finger

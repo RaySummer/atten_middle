@@ -35,7 +35,7 @@ public class SyncDataController {
     public ResponseEntity<GlobalResponseBody> syncEmployee(@RequestBody List<EmployeeSyncRequest> empList) {
 
         if (empList.isEmpty()) {
-            return ResponseEntity.ok(new GlobalResponseBody("500", "error", "没有同步的数据"));
+            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "没有同步的数据"));
         }
         List<EmployeeSyncQueue> syncQueues = new ArrayList<>();
         for (EmployeeSyncRequest request : empList) {
@@ -65,16 +65,16 @@ public class SyncDataController {
         }
         syncService.syncUserToDevices(syncQueues);
 
-        return ResponseEntity.ok(new GlobalResponseBody("200", "success", "保存成功，等待发送同步指令"));
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "已保存指令到数据库，等待下次设备心跳时发送"));
     }
 
     @PostMapping("/sync-new-data")
     public ResponseEntity<GlobalResponseBody> syncCheckNewData(@RequestBody List<String> deviceSns) {
         if (deviceSns.isEmpty()) {
-            return ResponseEntity.ok(new GlobalResponseBody("500", "error", "考勤机序列号不能为空！！"));
+            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "考勤机序列号不能为空！！"));
         }
         syncService.checkNewDataSendToServer(deviceSns);
-        return ResponseEntity.ok(new GlobalResponseBody("200", "success", "已生成指令，等待客户端同步数据！"));
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "已保存指令到数据库，等待下次设备心跳时发送"));
     }
 
 }

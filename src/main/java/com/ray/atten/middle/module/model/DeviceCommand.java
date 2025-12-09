@@ -26,7 +26,7 @@ public class DeviceCommand {
     private String deviceSn;
 
     // 指令内容 (例如: GETUSER, REBOOT)
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String commandContent;
 
     // 指令状态: 0=待发送(PENDING), 1=已发送(SENT), 2=已执行(EXECUTED)

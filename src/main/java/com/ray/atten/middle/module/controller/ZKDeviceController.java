@@ -349,9 +349,8 @@ public class ZKDeviceController {
      * URL: /iclock/device-cmd?SN=xxx&Return=0&CMD=C:GETUSER
      */
     @PostMapping("/iclock/devicecmd")
-    public String commandCallback(
-            @RequestParam("SN") String sn,
-            HttpServletRequest request) {
+    public String commandCallback(@RequestParam("SN") String sn,
+                                  HttpServletRequest request) {
 
         // =========================================================
         // 【调试代码块】 打印所有接收到的查询参数
@@ -383,6 +382,7 @@ public class ZKDeviceController {
         // 1. 尝试从 Query 或 Body 中提取 Return 和 CMD
         String returnCode = request.getParameter("Return");
         String cmdContent = request.getParameter("CMD");
+        String cmdId = request.getParameter("ID");
 
         if (!bodyData.isEmpty()) {
             // 使用 & 符号分割参数
@@ -397,6 +397,8 @@ public class ZKDeviceController {
                         returnCode = value;
                     } else if (key.equalsIgnoreCase("CMD")) {
                         cmdContent = value;
+                    } else if (key.equalsIgnoreCase("ID")) {
+                        cmdId = value;
                     }
                     // 也可以打印 ID，方便追踪
                     if (key.equalsIgnoreCase("ID")) {
@@ -409,7 +411,7 @@ public class ZKDeviceController {
         // 2. 调用 CommandService 处理结果 (继续使用旧逻辑)
         if (returnCode != null) { // 只需要 Return，因为 CMD 可能是空的
             // 如果 Return=-1002，CommandService 会将指令标记为 FAILED
-            commandService.processCommandCallback(sn, cmdContent, returnCode);
+            commandService.processCommandCallback(sn, cmdContent, returnCode, cmdId);
         } else {
             log.error("DeviceCMD callback missing Return info.");
         }

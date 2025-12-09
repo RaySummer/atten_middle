@@ -15,6 +15,6 @@ public class GlobalResponseBody implements Serializable {
 
     private String msg;
 
-    private String content;
+    private Object content;
 
 }

@@ -4,12 +4,14 @@ import com.ray.atten.middle.module.dto.PendingCommandDto;
 import com.ray.atten.middle.module.model.DeviceCommand;
 import com.ray.atten.middle.module.repository.DeviceCommandRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -57,14 +59,7 @@ public class CommandService {
         }
         List<PendingCommandDto> pendingCommandDtoList = new ArrayList<>();
 
-        // 2. 构造 ADMS 协议要求的返回格式 (CMD:C:指令内容)
         // 注意：ADMS 协议要求指令前缀是 C:
-//        List<String> commandStrings = new ArrayList<>();
-//        for (DeviceCommand cmd : pendingList) {
-//            String s = "C:" + cmd.getId() + ":" + cmd.getCommandContent();
-//            commandStrings.add(s);
-//        }
-
         // 3. 将这些指令的状态更新为 STATUS_SENT (已发送)
         for (DeviceCommand command : pendingList) {
             // 构造 ADMS 协议要求的返回格式 (CMD:C:指令内容)
@@ -103,43 +98,57 @@ public class CommandService {
      * @param returnCode 设备的返回码 ("0"为成功)
      */
     @Transactional
-    public void processCommandCallback(String deviceSn, String cmdContent, String returnCode) {
+    public void processCommandCallback(String deviceSn, String cmdContent, String returnCode, String cmdID) {
 
         // 1. 提取指令的实际内容 (去除 'C:' 前缀)
         String actualContent = cmdContent != null && cmdContent.startsWith("C:")
                 ? cmdContent.substring(2)
                 : cmdContent;
 
-        if (actualContent == null || actualContent.isEmpty()) {
+        if (StringUtils.isEmpty(actualContent)) {
             log.error("Callback Error: Missing command content from " + deviceSn);
             return;
         }
 
-        // 2. 查找最近的已发送 (SENT) 指令
-        List<DeviceCommand> commands = commandRepository.findByDeviceSnAndCommandContentAndStatusOrderByCreateTimeDesc(
-                deviceSn, actualContent, STATUS_SENT);
-
-        if (commands.isEmpty()) {
-            log.debug("Command not found or already processed for " + actualContent + " on " + deviceSn);
+        if (StringUtils.isEmpty(cmdID)) {
+            log.error("Callback Error: Missing cmdID from " + cmdID);
             return;
         }
 
+        Optional<DeviceCommand> deviceCommand = commandRepository.findById(Long.valueOf(cmdID));
+
+//        // 2. 查找最近的已发送 (SENT) 指令
+//        List<DeviceCommand> commands = commandRepository.findByDeviceSnAndCommandContentAndStatusOrderByCreateTimeDesc(
+//                deviceSn, actualContent, STATUS_SENT);
+//
+//        if (commands.isEmpty()) {
+//            log.debug("Command not found or already processed for " + actualContent + " on " + deviceSn);
+//            return;
+//        }
+//        if (!deviceCommand.isPresent()) {
+//            log.debug("Can't not found Data for cmdID :" + cmdID + " sn=" + deviceSn);
+//            return;
+//        }
+
         // 3. 处理查找到的最新的指令
-        DeviceCommand latestCommand = commands.get(0);
+        DeviceCommand command = deviceCommand.get();
         Integer newStatus;
 
         if ("0".equals(returnCode)) {
             // Return=0 表示成功执行
             newStatus = STATUS_EXECUTED;
-            log.debug("Command Success: " + latestCommand.getCommandContent() + " executed on " + deviceSn);
+            command.setStatus(newStatus);
+            log.debug("Command Success: " + command.getCommandContent() + " executed on " + deviceSn);
         } else {
             // 其他返回码表示失败
             newStatus = STATUS_FAILED;
-            log.error("Command FAILED (" + returnCode + "): " + latestCommand.getCommandContent() + " on " + deviceSn);
+            command.setStatus(newStatus);
+            log.error("Command FAILED (" + returnCode + "): " + command.getCommandContent() + " on " + deviceSn);
         }
 
         // 4. 更新指令状态
-        commandRepository.updateCommandStatus(latestCommand.getId(), newStatus);
+//        commandRepository.updateCommandStatus(latestCommand.getId(), newStatus);
+        commandRepository.save(command);
     }
 
     /**

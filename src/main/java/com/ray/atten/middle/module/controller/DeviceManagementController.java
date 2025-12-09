@@ -1,6 +1,7 @@
 package com.ray.atten.middle.module.controller;
 
 import com.ray.atten.middle.module.dto.DeviceRequest;
+import com.ray.atten.middle.module.dto.GlobalResponseBody;
 import com.ray.atten.middle.module.model.Device;
 import com.ray.atten.middle.module.service.DeviceService;
 import lombok.extern.slf4j.Slf4j;
@@ -27,16 +28,20 @@ public class DeviceManagementController {
      * @return 保存后的设备实体
      */
     @PostMapping
-    public ResponseEntity<Device> saveOrUpdateDevice(@Valid @RequestBody DeviceRequest request) {
+    public ResponseEntity<GlobalResponseBody> saveOrUpdateDevice(@Valid @RequestBody DeviceRequest request) {
 
         Device savedDevice = deviceService.saveOrUpdateDevice(request);
 
-        return ResponseEntity.ok(savedDevice);
+        if (savedDevice == null) {
+            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "请检查数据是否有误"));
+        }
+
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", savedDevice));
     }
 
     // 增加一个 GET 接口用于查询所有设备
     @GetMapping
-    public ResponseEntity<Iterable<Device>> getAllDevices() {
-        return ResponseEntity.ok(deviceService.findAllDevices());
+    public ResponseEntity<GlobalResponseBody> getAllDevices() {
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", deviceService.findAllDevices()));
     }
 }
