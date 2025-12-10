@@ -66,7 +66,9 @@ public class EmployeeService {
                 data.setBiologyNo(map.get("No"));
                 if (StringUtils.isNoneEmpty(data.getSyncedFromDeviceSn())) {
                     String orgSn = data.getSyncedFromDeviceSn();
-                    data.setSyncedFromDeviceSn(orgSn + "," + sn);
+                    if (!orgSn.contains(sn)) {
+                        data.setSyncedFromDeviceSn(orgSn + "," + sn);
+                    }
                 } else {
                     data.setSyncedFromDeviceSn(sn);
                 }
