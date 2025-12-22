@@ -4,9 +4,9 @@ import com.ray.atten.middle.module.dto.DeviceDto;
 import com.ray.atten.middle.module.dto.DeviceRequest;
 import com.ray.atten.middle.module.model.Device;
 import com.ray.atten.middle.module.repository.DeviceRepository;
+import com.ray.atten.middle.module.utils.DeviceHeartbeatHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.criteria.Predicate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,8 +37,7 @@ public class DeviceService {
         Device device;
         if (request.getDeviceSn() != null) {
             // 根据 SN 查找现有设备，实现“覆盖式更新”或“新增”
-            device = deviceRepository.findByDeviceSn(request.getDeviceSn())
-                    .orElse(new Device());
+            device = deviceRepository.findByDeviceSn(request.getDeviceSn());
         } else {
             device = new Device();
         }
@@ -86,43 +86,6 @@ public class DeviceService {
         return collect;
     }
 
-    /**
-     * 新增或修改设备
-     */
-    @Transactional
-    public DeviceDto saveOrUpdate(DeviceDto dto) {
-        Device entity;
-        if (dto.getDeviceSn() != null) {
-            // 根据 SN 查找现有设备，实现“覆盖式更新”或“新增”
-            entity = deviceRepository.findByDeviceSn(dto.getDeviceSn())
-                    .orElse(new Device());
-        } else {
-            entity = new Device();
-        }
-
-        // 属性拷贝
-        BeanUtils.copyProperties(dto, entity, "id"); // 不拷贝 ID，交给 JPA 处理或由 SN 确定
-
-        Device saved = deviceRepository.save(entity);
-        log.info("设备已保存: {}", saved.getDeviceSn());
-        return convertToDto(saved);
-    }
-
-    /**
-     * 同步考勤数据 (逻辑占位)
-     */
-    public boolean syncAttendance(String deviceSn) {
-        log.info("正在为设备 {} 开启同步任务...", deviceSn);
-        try {
-            // 这里通常是调用第三方 SDK 或者多线程去拉取设备日志
-            // TODO: 接入设备厂商提供的 SDK 逻辑
-            return true;
-        } catch (Exception e) {
-            log.error("同步失败: ", e);
-            return false;
-        }
-    }
-
     private DeviceDto convertToDto(Device entity) {
         if (entity == null) {
             return null;
@@ -134,11 +97,61 @@ public class DeviceService {
         dto.setLocation(entity.getLocation());
         dto.setModel(entity.getModel());
         dto.setIpAddress(entity.getIpAddress());
-        dto.setActive(entity.isActive());
+        dto.setActive(entity.getActive());
         dto.setCreateTime(entity.getCreateTime());
         dto.setUpdateTime(entity.getUpdateTime());
 
         return dto;
+    }
+
+    public List<Device> findDeviceIsTrue() {
+        return deviceRepository.findByActiveTrue();
+    }
+
+    /**
+     * 将设备设置为离线（不活跃）状态
+     */
+    @Transactional // 涉及更新，建议开启事务
+    public void setDeviceOffline(String sn) {
+        Device device = deviceRepository.findByDeviceSn(sn);
+
+        if (device != null) {
+            // 从内存拿最后一次心跳时间
+            LocalDateTime realLastSeen = DeviceHeartbeatHolder.getLastSeen(sn);
+
+            log.warn("执行离线处理 - 设备: {}, 内存最后心跳: {}", sn, realLastSeen);
+
+            device.setIsOnline(false);
+            device.setActive(false); // 自动关闭活跃状态
+
+            // 如果内存里有时间，存内存的；如果没有（说明从来没连上过），存当前时间
+            if (realLastSeen != null) {
+                device.setLastSeen(realLastSeen);
+            } else if (device.getLastSeen() == null) {
+                device.setLastSeen(LocalDateTime.now());
+            }
+
+            deviceRepository.save(device);
+            // 清理缓存，防止重复触发
+            DeviceHeartbeatHolder.remove(sn);
+        }
+    }
+
+    public void processHeartbeat(String sn) {
+        // 1. 无论如何，先刷新内存缓存
+        DeviceHeartbeatHolder.refresh(sn);
+
+        // 2. 这里的判断条件要放宽：如果是 null 或者当前是离线，都要触发一次数据库同步
+        Device device = deviceRepository.findByDeviceSn(sn);
+        if (device != null) {
+            if (device.getIsOnline() == null || !device.getIsOnline() || device.getLastSeen() == null) {
+                device.setIsOnline(true);
+                device.setActive(true);
+                device.setLastSeen(LocalDateTime.now());
+                deviceRepository.save(device);
+                log.info("设备 {} 状态初始化/重连成功，已同步至数据库", sn);
+            }
+        }
     }
 
 }

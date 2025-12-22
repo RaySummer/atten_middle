@@ -37,60 +37,6 @@ public class OaEmployeeService {
             "entryDate",
             "createTime"
     ));
-/*  public Page<OaEmployee> queryEmployees(OaEmployeeQueryRequest request) {
-
-        // 1. 處理排序邏輯
-        Sort sort = createSort(request.getSortBy(), request.getSortOrder());
-
-        // 1. 構造分頁對象 (Pageable)
-        // JPA 的分頁從索引 0 開始，所以頁碼需要調整
-        Pageable pageable = PageRequest.of(
-                request.getPageNum() - 1,
-                request.getPageSize(),
-                sort // 將構造好的 Sort 對象傳入 PageRequest
-        );
-
-        // 2. 構造查詢規範 (Specification)
-        Specification<OaEmployee> spec = (root, query, criteriaBuilder) -> {
-
-            // 用於存儲所有 AND 條件的列表
-            List<Predicate> predicates = new ArrayList<>();
-
-            // A. 模糊查詢 (PIN 或 Name 模糊查詢)
-            if (StringUtils.hasText(request.getKeyword())) {
-                String likePattern = "%" + request.getKeyword().toLowerCase() + "%";
-
-                // 構造一個 OR 條件: WHERE LOWER(pin) LIKE ? OR LOWER(name) LIKE ?
-                Predicate keywordPredicate = criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("pin")), likePattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), likePattern)
-                );
-                predicates.add(keywordPredicate);
-            }
-
-//            // B. 級聯查詢 - 分公司 (未來擴展)
-//            if (StringUtils.hasText(request.getCompanyId())) {
-//                predicates.add(criteriaBuilder.equal(root.get("company"), request.getCompanyId()));
-//            }
-//
-//            // C. 級聯查詢 - 部門 (未來擴展)
-//            if (StringUtils.hasText(request.getDeptId())) {
-//                predicates.add(criteriaBuilder.equal(root.get("dept"), request.getDeptId()));
-//            }
-//
-            // D. 在職狀態查詢
-            if (request.getInService() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("inService"), request.getInService()));
-            }
-
-            // 將所有條件組合起來 (使用 AND 連接)
-            // criteriaBuilder.and(predicates.toArray(new Predicate[0]))
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        };
-
-        // 3. 執行查詢並返回 Page 對象 (包含數據列表和總記錄數)
-        return oaEmployeeRepository.findAll(spec, pageable);
-    }*/
 
     /**
      * 查询员工列表并组装 EmployeeSyncQueue 的数据
@@ -278,16 +224,10 @@ public class OaEmployeeService {
 
         // 3. 執行批量操作 (利用 JDBC Batching)
         // --- 批量新增 ---
-        oaEmployeeRepository.saveAll(toInsert);
+        oaEmployeeRepository.saveAllAndFlush(toInsert);
 
         // --- 批量更新 ---
-        oaEmployeeRepository.saveAll(toUpdate);
-
-        // 4. 確保事務提交並清除 JPA Session 緩存 (重要)
-        // 在數據量大時，需要確保 Session 不會累積過多實體
-        // 由於我們使用 @Transactional，可以在這裡手動刷新/清理
-        // entityManager.flush(); // 如果使用 EntityManager
-        // entityManager.clear();
+        oaEmployeeRepository.saveAllAndFlush(toUpdate);
 
         log.debug("Batch Upsert completed. Inserted: " + toInsert.size() + ", Updated: " + toUpdate.size());
     }

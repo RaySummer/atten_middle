@@ -1,7 +1,9 @@
 package com.ray.atten.middle.module.controller;
 
 import com.ray.atten.middle.module.dto.PendingCommandDto;
-import com.ray.atten.middle.module.service.*;
+import com.ray.atten.middle.module.service.CommandService;
+import com.ray.atten.middle.module.service.DeviceService;
+import com.ray.atten.middle.module.service.IClockAsyncService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +24,9 @@ public class ZKDeviceController {
 
     @Autowired
     private IClockAsyncService iClockAsyncService;
+
+    @Autowired
+    private DeviceService deviceService;
 
     /**
      * 1. 协议规范：初始化信息交互接口
@@ -85,92 +90,6 @@ public class ZKDeviceController {
      * 2. 接收考勤数据 (POST)
      * URL: /iclock/cdata?SN=xxx&table=ATTLOG
      */
-//    @PostMapping(value = {"/iclock/cdata", "/cdata", "/data"}, consumes = "*/*")
-//    public String handleCDataPost(
-//            @RequestParam(value = "SN", required = false) String snParam,
-//            @RequestParam(value = "table", required = false) String table, // 接收 table 参数
-//            @RequestParam(value = "Stamp", required = false) String stamp,
-//            HttpServletRequest request) {
-//
-//        // 1. 获取 SN 和 table 信息
-//        String sn = snParam;
-//        log.debug("\n>>> CONTROLLER: 捕获到 POST 请求！SN=" + sn + ", Table=" + table);
-//
-//        // 2. 手动读取 Body 字符串 (这是最关键的步骤)
-//        String bodyData = "";
-//        String primaryEncoding = "GBK"; // 中控设备中文编码标准
-//        String fallbackEncoding = "UTF-8"; // 兼容英文/Base64数据的备用编码
-//
-//        // 1. 确保使用 request.getInputStream() 来读取原始字节
-//        try (java.io.InputStream inputStream = request.getInputStream()) {
-//
-//            int contentLength = request.getContentLength();
-//            if (contentLength <= 0) {
-//                log.error("!!! CONTROLLER WARNING: Content-Length is zero or missing. !!!");
-//                return "OK";
-//            }
-//
-//            // 2. 将数据读取到字节数组中
-//            byte[] buffer = new byte[contentLength];
-//            int read;
-//            int totalRead = 0;
-//
-//            // 循环读取，确保所有字节都被读完
-//            while (totalRead < contentLength && (read = inputStream.read(buffer, totalRead, contentLength - totalRead)) != -1) {
-//                totalRead += read;
-//            }
-//
-//            if (totalRead > 0) {
-//                // 3. 核心步骤：使用 GBK 编码将字节转换为字符串
-//                bodyData = new String(buffer, 0, totalRead, fallbackEncoding);
-//
-//                log.debug(">>> CONTROLLER: 原始 Body 内容长度: " + bodyData.length());
-//                log.debug(">>> CONTROLLER: 原始 Body 内容 (使用 " + fallbackEncoding + " 解码):\n" + bodyData.substring(0, Math.min(bodyData.length(), 1000)));
-//                if (bodyData.length() > 1000) {
-//                    log.debug("...(Body Truncated)...");
-//                }
-//
-//                if ("USERINFO".equalsIgnoreCase(table)) {
-//                    // 您的用户数据解析逻辑
-//                    // deviceSyncService.processUserInfo(sn, bodyData);
-//                    log.debug("--- 成功捕获到 USERINFO 数据！---");
-//                } else if ("ATTLOG".equalsIgnoreCase(table)) {
-//                    try {
-//                        attendanceService.processAttLogData(sn, bodyData);
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                        log.error("考勤记录接收成功，但数据保存异常。");
-//                    }
-//
-//                    log.debug("--- 收到设备[" + sn + "] 考勤记录---");
-//                } else if ("BIODATA".equalsIgnoreCase(table)) {
-//                    log.debug("--- 进入了BIODATA的判断，准备执行保存 ---");
-//                    try {
-//                        employeeService.processBioData(sn, bodyData);
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                        log.error("BIODATA接收成功，但数据保存异常。");
-//                    }
-//                    log.debug("--- 成功捕获到 BIODATA 数据！---");
-//                } else {
-//                    // 其他数据类型
-//
-//                    log.debug("--- 成功捕获到 其他类型 数据！---");
-//                }
-//
-//            } else {
-//                log.error("!!! CONTROLLER ERROR: Body is empty after reading !!!");
-//            }
-//
-//        } catch (Exception e) {
-//            // 如果这里仍然捕获到异常，则可能是读取过程中断
-//            log.error("Critical Error reading POST body: " + e.getMessage());
-//            e.printStackTrace();
-//        }
-//
-//        // 协议要求：必须返回 OK，否则设备会重传数据
-//        return "OK";
-//    }
     @PostMapping(value = {"/iclock/cdata", "/cdata", "/data"}, consumes = "*/*")
     public String handleCDataPost(
             @RequestParam(value = "SN", required = false) String sn,
@@ -218,6 +137,7 @@ public class ZKDeviceController {
      */
     @GetMapping("/iclock/getrequest")
     public String heartbeat(@RequestParam("SN") String sn) {
+        deviceService.processHeartbeat(sn);
 
         // 注意：/getrequest 的响应体只需要配置行和 CMD 指令，不需要 HTTP 头部
         StringBuilder response = new StringBuilder();
@@ -331,7 +251,7 @@ public class ZKDeviceController {
     }
 
     /**
-     * 连接检查接口 (关键！)
+     * 连接检查接口
      * 设备在发送大数据之前，会调用此接口测试连通性
      */
     @GetMapping("/ping")
@@ -341,7 +261,7 @@ public class ZKDeviceController {
     }
 
     /**
-     * 6. 设备注册接口 (部分设备启动时调用)
+     * 设备注册接口 (部分设备启动时调用)
      * 用于提交设备型号、序列号、固件版本等信息
      */
     @PostMapping("/registry")

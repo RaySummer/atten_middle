@@ -41,7 +41,13 @@ public class Device implements Serializable {
     private String ipAddress;
 
     // 是否激活/启用同步
-    private boolean active;
+    private Boolean active = Boolean.TRUE;
+
+    //物理状态（设备当前是否连通）
+    private Boolean isOnline = Boolean.TRUE;
+
+    //最后一次心跳时间
+    private LocalDateTime lastSeen;
 
     // 创建时间
     private LocalDateTime createTime;

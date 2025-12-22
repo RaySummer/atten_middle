@@ -79,18 +79,6 @@ public class CommandService {
     }
 
     /**
-     * 供 /cdata POST 接口调用：设备确认指令执行成功后，更新状态
-     * 实际中，设备会返回一个 OpStamp 和 CMD:OK，表示成功
-     *
-     * @param commandId 指令ID
-     */
-    @Transactional
-    public void markCommandAsExecuted(Long commandId) {
-        commandRepository.updateCommandStatus(commandId, 2); // 2=已执行
-        log.debug("CommandService: Command ID " + commandId + " marked as EXECUTED.");
-    }
-
-    /**
      * 处理设备指令执行结果回调
      *
      * @param deviceSn   报告结果的设备序列号
@@ -117,20 +105,8 @@ public class CommandService {
 
         Optional<DeviceCommand> deviceCommand = commandRepository.findById(Long.valueOf(cmdID));
 
-//        // 2. 查找最近的已发送 (SENT) 指令
-//        List<DeviceCommand> commands = commandRepository.findByDeviceSnAndCommandContentAndStatusOrderByCreateTimeDesc(
-//                deviceSn, actualContent, STATUS_SENT);
-//
-//        if (commands.isEmpty()) {
-//            log.debug("Command not found or already processed for " + actualContent + " on " + deviceSn);
-//            return;
-//        }
-//        if (!deviceCommand.isPresent()) {
-//            log.debug("Can't not found Data for cmdID :" + cmdID + " sn=" + deviceSn);
-//            return;
-//        }
 
-        // 3. 处理查找到的最新的指令
+        //处理查找到的最新的指令
         DeviceCommand command = deviceCommand.get();
         Integer newStatus;
 
@@ -151,44 +127,4 @@ public class CommandService {
         commandRepository.save(command);
     }
 
-    /**
-     * 處理來自 /getrequest 心跳的隱性指令執行結果回饋
-     *
-     * @param deviceSn   設備序列號
-     * @param cmdContent 設備回傳的上次執行的指令內容 (例如 GETUSER)
-     * @param returnCode 設備回傳的狀態碼 (例如 0=成功)
-     */
-    @Transactional
-    public void processHeartbeatCallback(String deviceSn, String cmdContent, String returnCode) {
-
-        // ADMS 設備回傳的指令內容通常是純粹的命令名，例如 "GETUSER"
-        String actualContent = cmdContent.trim();
-
-        // 1. 查找最近的已發送 (SENT) 指令
-        // 狀態仍然是 STATUS_SENT (1)，我們正在等待設備確認
-        List<DeviceCommand> commands = commandRepository.findByDeviceSnAndCommandContentAndStatusOrderByCreateTimeDesc(
-                deviceSn, actualContent, STATUS_SENT);
-
-        if (commands.isEmpty()) {
-            log.debug("Heartbeat Callback: No matching SENT command found for " + actualContent + " on " + deviceSn);
-            return;
-        }
-
-        // 2. 處理查找到的最新的指令
-        DeviceCommand latestCommand = commands.get(0);
-        Integer newStatus;
-
-        if ("0".equals(returnCode) || "OK".equalsIgnoreCase(returnCode)) {
-            // 設備返回 "0" 或 "OK" 表示成功執行
-            newStatus = STATUS_EXECUTED;
-            log.debug("Heartbeat Success: " + latestCommand.getCommandContent() + " marked EXECUTED on " + deviceSn);
-        } else {
-            // 任何其他值或空值都視為失敗
-            newStatus = STATUS_FAILED;
-            log.error("Heartbeat FAILED (" + returnCode + "): " + latestCommand.getCommandContent() + " on " + deviceSn);
-        }
-
-        // 3. 更新指令狀態
-        commandRepository.updateCommandStatus(latestCommand.getId(), newStatus);
-    }
 }
