@@ -1,5 +1,6 @@
 package com.ray.atten.middle.module.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,44 +18,30 @@ import java.util.Set;
 @Setter
 @Access(AccessType.FIELD)
 @Entity
-@Table(name = "devices")
-public class Device implements Serializable {
+@Table(name = "attendance_group")
+public class AttendanceGroup implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 考勤机序列号 (唯一标识)
     @Column(unique = true, nullable = false)
-    private String deviceSn;
-
-    // 考勤机名称/别名
-    private String alias;
-
-    // 考勤机位置
-    private String location;
-
-    // 考勤机型号
-    private String model;
-
-    // 考勤机IP
-    private String ipAddress;
-
-    // 是否激活/启用同步
-    private boolean active;
-
-    // 创建时间
-    private LocalDateTime createTime;
-
-    // 修改时间
-    private LocalDateTime updateTime;
+    private String groupName;
 
     // 【多對多關係配置】
-    // mappedBy: 指向 AttendanceGroup 實體中的 'devices' 屬性，表示 Device 是關係的從屬方
-    @ManyToMany(mappedBy = "devices", fetch = FetchType.LAZY)
-    private Set<AttendanceGroup> groups = new HashSet<>();
+    // JoinTable: 定義中間表 group_device_mapping
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "group_device_mapping",
+            // JoinColumns: 定義當前實體 (AttendanceGroup) 在中間表中的外鍵列名
+            joinColumns = @JoinColumn(name = "group_id"),
+            // inverseJoinColumns: 定義對面實體 (Device) 在中間表中的外鍵列名
+            inverseJoinColumns = @JoinColumn(name = "device_id")
+    )
+    private Set<Device> devices = new HashSet<>();
 
-    // --- 自动维护时间戳 ---
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 
     @PrePersist
     protected void onCreate() {

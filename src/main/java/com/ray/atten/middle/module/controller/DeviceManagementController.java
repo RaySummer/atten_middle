@@ -1,8 +1,8 @@
 package com.ray.atten.middle.module.controller;
 
+import com.ray.atten.middle.module.dto.DeviceDto;
 import com.ray.atten.middle.module.dto.DeviceRequest;
 import com.ray.atten.middle.module.dto.GlobalResponseBody;
-import com.ray.atten.middle.module.model.Device;
 import com.ray.atten.middle.module.service.DeviceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +30,10 @@ public class DeviceManagementController {
     @PostMapping
     public ResponseEntity<GlobalResponseBody> saveOrUpdateDevice(@Valid @RequestBody DeviceRequest request) {
 
-        Device savedDevice = deviceService.saveOrUpdateDevice(request);
+        DeviceDto savedDevice = deviceService.saveOrUpdateDevice(request);
 
         if (savedDevice == null) {
-            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "请检查数据是否有误"));
+            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "请检查数据是否有误，设备序列号可能已经存在"));
         }
 
         return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", savedDevice));

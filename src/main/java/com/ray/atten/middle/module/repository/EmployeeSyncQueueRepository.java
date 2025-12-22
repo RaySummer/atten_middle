@@ -17,4 +17,11 @@ public interface EmployeeSyncQueueRepository extends JpaRepository<EmployeeSyncQ
 
     @Query(nativeQuery = true, value = "select * from employee_sync_queue where pin = :pin")
     EmployeeSyncQueue findByPin(String pin);
+
+    /**
+     * 根据 PIN 列表查询对应的同步队列数据
+     * @param pins 员工工号列表
+     * @return 匹配的 EmployeeSyncQueue 列表
+     */
+    List<EmployeeSyncQueue> findByPinIn(List<String> pins);
 }

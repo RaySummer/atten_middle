@@ -5,10 +5,12 @@ import lombok.Setter;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
+import java.io.Serializable;
 
 @Getter
 @Setter
-public class DeviceRequest {
+public class DeviceRequest implements Serializable {
+
     // 唯一标识：序列号
     @NotBlank(message = "设备序列号不能为空")
     @Size(max = 50)
@@ -18,5 +20,5 @@ public class DeviceRequest {
     private String location; // 考勤机位置
     private String model;    // 考勤机型号
     private String ipAddress; // 考勤机IP
-    private boolean active;  // 是否激活 (true/false)
+    private Boolean active;  // 是否激活 (true/false)
 }

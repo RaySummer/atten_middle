@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "employee")
-public class Employee {
+public class Employee implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -229,14 +229,19 @@ public class SyncDataService {
             log.debug("待同步的数据为空，不生成指令");
             return;
         }
-        List<Device> deviceList = deviceRepo.findAllByActiveTrue();
+//        List<Device> deviceList = deviceRepo.findAllByActiveTrue();
 
         for (EmployeeSyncQueue queue : syncQueues) {
             if (queue.getStatus() == 0) {
                 String[] deviceSns = queue.getTargetDeviceSn().split(",");
-                if (StringUtils.isEmpty(queue.getTargetDeviceSn())) {
-
-                    deviceSns = deviceList.stream().map(Device::getDeviceSn).toArray(String[]::new);
+                //修改：如果没有同步序列号即没有选择考勤组，不生成指令
+//                if (StringUtils.isEmpty(queue.getTargetDeviceSn())) {
+//
+//                    deviceSns = deviceList.stream().map(Device::getDeviceSn).toArray(String[]::new);
+//                }
+                if (deviceSns.length <= 0) {
+                    log.debug("没有序列号，无法生成命令");
+                    continue;
                 }
                 for (String sn : deviceSns) {
                     //生成更新用户指令

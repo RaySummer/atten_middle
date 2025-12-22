@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "attendance_logs")
-public class AttendanceLog {
+public class AttendanceLog implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,6 +30,16 @@ public class AttendanceLog {
     private Integer verifyType;// 验证方式
 
     private LocalDateTime createTime;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "userPin",
+            referencedColumnName = "pin",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT) // 关键：禁止生成外键约束
+    )
+    private OaEmployee employee;
 
     @PrePersist
     protected void onCreate() {
