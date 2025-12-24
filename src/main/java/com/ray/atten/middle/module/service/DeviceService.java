@@ -34,11 +34,12 @@ public class DeviceService {
      */
     public DeviceDto saveOrUpdateDevice(DeviceRequest request) {
 
-        Device device;
+        Device device = null;
         if (request.getDeviceSn() != null) {
             // 根据 SN 查找现有设备，实现“覆盖式更新”或“新增”
             device = deviceRepository.findByDeviceSn(request.getDeviceSn());
-        } else {
+        }
+        if (device == null) {
             device = new Device();
         }
 
