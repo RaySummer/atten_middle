@@ -53,6 +53,23 @@
             margin-top: 20px;
             font-size: 12px;
             color: #999;
+            line-height: 1.8; /* 增加行间距，排版更好看 */
+        }
+
+        .driver-link {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .driver-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading-text {
+            color: #3498db;
+            margin-top: 15px;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -62,14 +79,19 @@
     <h2>Atten Desktop</h2>
     <p>官方 Windows 客户端</p>
 
-    <a href="/api/download/desktop" class="download-btn" id="dlBtn" onclick="loading()">
+    <a href="/api/download/attendesktop" class="download-btn" id="dlBtn" onclick="loading()">
         立即下载 (.exe)
     </a>
 
     <p id="tip" style="display:none;" class="loading-text">🚀 正在准备下载，请稍候...</p>
 
-    <div class="footer" id="footer-info">
-        正在获取版本信息...
+    <div class="footer">
+        <div id="footer-info">正在获取版本信息...</div>
+        <div style="margin-top: 8px; color: #666;">
+            💡 如果使用指纹设备，请
+            <a href="/api/download/zkfingerdevice" class="driver-link">点击下载驱动</a>
+        </div>
+        <div style="margin-top: 5px;">适用于 Windows 7/10/11</div>
     </div>
 </div>
 
@@ -81,25 +103,23 @@
         }, 5000);
     }
 
-    // 动态获取最新版本信息并填充
     fetch('/api/download/latest-info')
         .then(res => {
             if (!res.ok) throw new Error("未找到安装包");
             return res.json();
         })
         .then(data => {
-            // 动态更新页面内容
             document.getElementById('footer-info').innerHTML =
-                `当前版本: V${data.version} | 大小: ${data.size}<br>` +
-                `更新日期: ${data.updateTime} | 适用于 Win 7/10/11`;
+                `当前版本: <strong>V${data.version}</strong> | 大小: ${data.size} | 更新日期: ${data.updateTime}`;
 
-            // 可选：更新下载按钮的 title
-            document.getElementById('dlBtn').title = "点击下载 " + data.fileName;
+            document.getElementById('dlBtn').title = "最新包: " + data.fileName;
         })
         .catch(err => {
             document.getElementById('footer-info').innerText = "暂无可用下载版本";
-            document.getElementById('dlBtn').style.backgroundColor = "#ccc";
-            document.getElementById('dlBtn').style.pointerEvents = "none";
+            const dlBtn = document.getElementById('dlBtn');
+            dlBtn.style.backgroundColor = "#ccc";
+            dlBtn.style.pointerEvents = "none";
+            dlBtn.innerText = "暂无安装包";
         });
 </script>
 </body>

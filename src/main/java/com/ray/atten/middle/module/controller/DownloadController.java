@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
@@ -27,41 +28,43 @@ public class DownloadController {
     @Value("${atten_desktop.download.path}")
     private String downloadPath;
 
-    private static final String EXE_NAME = "AttenDesktop.exe";
-
-    @GetMapping("/api/download/desktop")
-    public ResponseEntity<Resource> downloadFile() {
+    @GetMapping("/api/download/{prefix}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String prefix) {
         try {
-            // 1. 获取目录下的所有文件
             File dir = new File(downloadPath);
             if (!dir.exists() || !dir.isDirectory()) {
                 log.error("下载目录不存在: {}", downloadPath);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
 
-            // 2. 筛选以 AttenDesktop 开头且以 .exe 结尾的文件
+            // 统一转成小写进行匹配，增强容错性
+            final String searchPrefix = prefix.toLowerCase();
+
+            // 直接筛选以传入前缀开头且以 .exe 结尾的文件
             File[] files = dir.listFiles((d, name) ->
-                    name.toLowerCase().startsWith("attendesktop") && name.toLowerCase().endsWith(".exe")
+                    name.toLowerCase().startsWith(searchPrefix) && name.toLowerCase().endsWith(".exe")
             );
 
             if (files == null || files.length == 0) {
-                log.warn("目录下未找到安装包: {}", downloadPath);
+                log.warn("目录下未找到匹配 [{}] 的安装包: {}", prefix, downloadPath);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // 3. 按照最后修改时间排序，取最新的一个（防止目录里有旧版本）
+            // 按照最后修改时间排序，取最新的一个
             File latestFile = Arrays.stream(files)
                     .max(Comparator.comparingLong(File::lastModified))
-                    .get();
+                    .orElse(null);
 
-            log.info("用户下载最新安装包: {}", latestFile.getName());
+            if (latestFile == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
-            // 4. 构建资源返回
+            log.info("用户请求下载: {}, 匹配到文件: {}", prefix, latestFile.getName());
+
             Path filePath = latestFile.toPath();
             Resource resource = new UrlResource(filePath.toUri());
 
-            // 动态设置文件名，确保浏览器下载时保留原名（如 AttenDesktop_1.0.1.exe）
-            String contentDisposition = "attachment; filename=\"" + latestFile.getName() + "\"";
+            // 关键点：使用 URL 编码处理文件名中的特殊字符或中文，防止浏览器下载时乱码
+            String encodedFileName = java.net.URLEncoder.encode(latestFile.getName(), "UTF-8").replaceAll("\\+", "%20");
+            String contentDisposition = "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName;
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
