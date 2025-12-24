@@ -45,7 +45,7 @@ public class OaEmployeeController {
      * 接口快速返回，數據處理異步進行。
      */
     @PostMapping("/oa-employees/push")
-    public ResponseEntity<GlobalResponseBody> receiveEmployeePush(@RequestBody List<OaEmployee> employees) {
+    public ResponseEntity<GlobalResponseBody> receiveEmployeePush(@RequestBody List<OaEmployeeRequest> employees) {
         if (employees == null || employees.isEmpty()) {
             return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "推送数据队列为空"));
         }

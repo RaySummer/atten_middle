@@ -3,6 +3,7 @@ package com.ray.atten.middle.module.service;
 
 import com.ray.atten.middle.module.dto.OaEmployeeDto;
 import com.ray.atten.middle.module.dto.OaEmployeeQueryRequest;
+import com.ray.atten.middle.module.dto.OaEmployeeRequest;
 import com.ray.atten.middle.module.model.EmployeeSyncQueue;
 import com.ray.atten.middle.module.model.OaEmployee;
 import com.ray.atten.middle.module.repository.EmployeeSyncQueueRepository;
@@ -154,6 +155,7 @@ public class OaEmployeeService {
         dto.setInService(oaEmployee.getInService());
         dto.setEntryDate(oaEmployee.getEntryDate());
         dto.setCreateTime(oaEmployee.getCreateTime());
+        dto.setOfficeLocation(oaEmployee.getOfficeLocation());
         // ... 复制其他 OaEmployee 中的字段
         return dto;
     }
@@ -182,14 +184,14 @@ public class OaEmployeeService {
      */
     @Async("employeePushExecutor") // 指定使用我們在 AsyncConfig 中定義的線程池
     @Transactional // 確保整個批量操作在單個事務中
-    public void asyncBatchUpsert(List<OaEmployee> employees) {
+    public void asyncBatchUpsert(List<OaEmployeeRequest> employees) {
         if (employees == null || employees.isEmpty()) {
             return;
         }
 
         // 1. 批量查詢現有的 PIN 碼
         Set<String> pushedPins = employees.stream()
-                .map(OaEmployee::getPin)
+                .map(OaEmployeeRequest::getPin)
                 .collect(Collectors.toSet());
 
         // 創建一個只包含 PIN 碼和 ID 的投影 (Projection) 來減少數據庫壓力
@@ -207,18 +209,15 @@ public class OaEmployeeService {
         List<OaEmployee> toInsert = new ArrayList<>();
         List<OaEmployee> toUpdate = new ArrayList<>();
 
-        for (OaEmployee pushedEmployee : employees) {
+        for (OaEmployeeRequest pushedEmployee : employees) {
             OaEmployee existing = existingMap.get(pushedEmployee.getPin());
 
             if (existing != null) {
-                // 更新操作：設置現有的 ID，並更新其他字段
-                pushedEmployee.setId(existing.getId());
                 // 這裡應該包含一個細緻的業務邏輯，例如只更新部分字段
-                updateEmployeeFields(existing, pushedEmployee); // 假設有輔助方法
-                toUpdate.add(existing);
+                toUpdate.add(convertTo(existing, pushedEmployee));
             } else {
                 // 新增操作
-                toInsert.add(pushedEmployee);
+                toInsert.add(convertTo(null, pushedEmployee));
             }
         }
 
@@ -240,5 +239,24 @@ public class OaEmployeeService {
         existing.setDept(pushed.getDept());
         existing.setInService(pushed.getInService());
     }
+
+    private OaEmployee convertTo(OaEmployee existing, OaEmployeeRequest request) {
+        if (existing == null) {
+            existing = new OaEmployee();
+        }
+        existing.setName(request.getName());
+        existing.setCompany(request.getCompany());
+        existing.setDept(request.getDept());
+        existing.setOfficeLocation(request.getOfficeLocation());
+        existing.setEntryDate(request.getEntryDate());
+        if (org.apache.commons.lang3.StringUtils.isNotEmpty(request.getInService()) && !request.getInService().equals("离职")) {
+            existing.setInService(Boolean.TRUE);
+        } else {
+            existing.setInService(Boolean.FALSE);
+        }
+
+        return existing;
+    }
+
 
 }

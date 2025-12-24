@@ -33,6 +33,9 @@ public class OaEmployee implements Serializable {
 
     // 狀態和時間
     private Boolean inService;  // 是否在職 (true/false)
+
+    private String officeLocation; //办公地点
+
     private LocalDateTime entryDate; // 入職時間
     private LocalDateTime createTime; // 創建時間
     private LocalDateTime updateTime; // 修改時間
