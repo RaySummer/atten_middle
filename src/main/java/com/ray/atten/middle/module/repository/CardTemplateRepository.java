@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface CardTemplateRepository extends JpaRepository<CardTemplate, Long> {
 
-    List<CardTemplate> findByActiveTrue();
+    List<CardTemplate> findByActiveTrueOrderByIdAsc();
 
     CardTemplate findByNameContains(String name);
 

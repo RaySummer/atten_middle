@@ -27,7 +27,7 @@ public class CardTemplateService {
      * 获取所有可用模板列表
      */
     public List<CardTemplateDto> findAllActive() {
-        return CardTemplateDto.listConvertToDto(repository.findByActiveTrue());
+        return CardTemplateDto.listConvertToDto(repository.findByActiveTrueOrderByIdAsc());
     }
 
     /**
