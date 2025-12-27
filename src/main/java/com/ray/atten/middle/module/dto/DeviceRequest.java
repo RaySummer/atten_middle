@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class DeviceRequest implements Serializable {
+public class DeviceRequest extends BaseDto implements Serializable {
 
     // 唯一标识：序列号
     @NotBlank(message = "设备序列号不能为空")

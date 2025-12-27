@@ -4,10 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AttendanceLogRequest {
+public class AttendanceLogRequest extends BaseDto implements Serializable {
 
     private String keyword;
     private String startTime;

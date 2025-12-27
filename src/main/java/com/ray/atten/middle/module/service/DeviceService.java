@@ -83,26 +83,8 @@ public class DeviceService {
         List<Device> entityList = deviceRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "id"));
 
         // 3. 转换为 DTO (建议使用 BeanUtils 或 MapStruct)
-        List<DeviceDto> collect = entityList.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<DeviceDto> collect = entityList.stream().map(DeviceDto::convertToDto).collect(Collectors.toList());
         return collect;
-    }
-
-    private DeviceDto convertToDto(Device entity) {
-        if (entity == null) {
-            return null;
-        }
-        DeviceDto dto = new DeviceDto();
-        dto.setId(entity.getId());
-        dto.setDeviceSn(entity.getDeviceSn());
-        dto.setAlias(entity.getAlias());
-        dto.setLocation(entity.getLocation());
-        dto.setModel(entity.getModel());
-        dto.setIpAddress(entity.getIpAddress());
-        dto.setActive(entity.getActive());
-        dto.setCreateTime(entity.getCreateTime());
-        dto.setUpdateTime(entity.getUpdateTime());
-
-        return dto;
     }
 
     public List<Device> findDeviceIsTrue() {

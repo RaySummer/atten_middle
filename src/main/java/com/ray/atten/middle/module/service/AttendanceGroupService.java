@@ -29,7 +29,7 @@ public class AttendanceGroupService {
         List<AttendanceGroupDto> dtoList = new ArrayList<>();
         list.forEach(group -> {
             AttendanceGroupDto dto = new AttendanceGroupDto();
-            dto.setId(group.getId());
+            dto.setUuid(group.getUuid());
             dto.setGroupName(group.getGroupName());
             List<String> sns = group.getDevices().stream().map(Device::getDeviceSn).collect(Collectors.toList());
             dto.setDeviceSns(sns);
@@ -58,10 +58,10 @@ public class AttendanceGroupService {
         AttendanceGroup group;
 
         // --- 1. 判斷操作類型 (Create 還是 Update) ---
-        if (request.getGroupId() != null) {
+        if (request.getUuid() != null) {
             // Update: 查找現有實體
-            group = attendanceGroupRepository.findById(request.getGroupId())
-                    .orElseThrow(() -> new NoSuchElementException("找不到 ID 為 " + request.getGroupId() + " 的考勤組，無法更新。"));
+            group = attendanceGroupRepository.findByUuid(request.getUuid())
+                    .orElseThrow(() -> new NoSuchElementException("找不到 ID 為 " + request.getGroupName() + " 的考勤組，無法更新。"));
 
             // 檢查 groupName 是否被其他組佔用
             attendanceGroupRepository.findByGroupName(request.getGroupName()).ifPresent(existing -> {

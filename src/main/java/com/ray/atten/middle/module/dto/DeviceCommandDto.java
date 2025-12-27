@@ -7,9 +7,8 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class DeviceCommandDto implements Serializable {
+public class DeviceCommandDto extends BaseDto implements Serializable {
 
     private String deviceSn;
 
-//    private String
 }

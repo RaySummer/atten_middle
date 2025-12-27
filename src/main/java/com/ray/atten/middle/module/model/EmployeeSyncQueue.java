@@ -16,11 +16,7 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "employee_sync_queue")
-public class EmployeeSyncQueue implements Serializable {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class EmployeeSyncQueue extends BaseEntity implements Serializable {
 
     // 指定推送到哪台机器 (如果为空，则推送到所有机器)
     // --- 同步控制 ---
@@ -60,10 +56,6 @@ public class EmployeeSyncQueue implements Serializable {
 
     private Integer photoSize;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
     //生物识别类型0通用的 1指纹 2面部 9可见光面部
     private String type;
 
@@ -75,10 +67,9 @@ public class EmployeeSyncQueue implements Serializable {
     //是否覆盖 0不覆盖返回错误，1覆盖
     private Integer overwrite;
 
-    @PrePersist
-    public void prePersist() {
-        this.createTime = LocalDateTime.now();
-        this.updateTime = LocalDateTime.now();
+    @Override
+    public void onCreate() {
+        super.onCreate();
         if (this.status == null) this.status = 0; // 默认待同步
         if (this.pri == null) this.pri = 0;
         if (this.verify == null) this.verify = 0;
@@ -87,11 +78,6 @@ public class EmployeeSyncQueue implements Serializable {
         if (this.photoSize == null) this.photoSize = 0;
         if (this.retry == null) this.retry = 0;
         if (this.overwrite == null) this.overwrite = 0;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updateTime = LocalDateTime.now();
     }
 
 }

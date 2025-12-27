@@ -18,11 +18,7 @@ import java.util.Set;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "devices")
-public class Device implements Serializable {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Device extends BaseEntity implements Serializable {
 
     // 考勤机序列号 (唯一标识)
     @Column(unique = true, nullable = false)
@@ -60,16 +56,4 @@ public class Device implements Serializable {
     @ManyToMany(mappedBy = "devices", fetch = FetchType.LAZY)
     private Set<AttendanceGroup> groups = new HashSet<>();
 
-    // --- 自动维护时间戳 ---
-
-    @PrePersist
-    protected void onCreate() {
-        this.createTime = LocalDateTime.now();
-        this.updateTime = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updateTime = LocalDateTime.now();
-    }
 }

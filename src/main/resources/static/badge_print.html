@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>工牌打印预览</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* --- 1. 全局样式 --- */
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+            /* 强制浏览器渲染色彩 */
+            color-scheme: light;
+        }
+
+        .no-print {
+            padding: 15px;
+            background: #333;
+            color: white;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            display: block;
+        }
+
+        .badge-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--item-width, 230px), 1fr));
+            gap: 15px;
+            padding: 20px;
+            width: 210mm;
+            margin: 0 auto;
+            background: white;
+            min-height: 297mm;
+        }
+
+        /* --- 2. 打印专用样式 --- */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0; /* 移除浏览器默认页眉页脚 */
+            }
+
+            * {
+                /* 核心：强制显示背景和彩色 */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                /* 确保图片渲染质量 */
+                image-rendering: -webkit-optimize-contrast;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .badge-list {
+                width: 210mm; /* 严格对齐 A4 */
+                grid-template-columns: repeat(var(--print-cols, 3), 1fr);
+                gap: 5px;
+                padding: 10mm; /* 给打印留一点边距 */
+                margin: 0;
+                background: white !important;
+            }
+        }
+    </style>
+    <style id="dynamic-template-css"></style>
+</head>
+<body>
+
+<div class="no-print">
+    <label>选择尺寸：</label>
+    <select id="sizeSelector">
+        <option value="small">小 (80%)</option>
+        <option value="medium" selected>中 (100%)</option>
+        <option value="large">大 (120%)</option>
+    </select>
+    <button onclick="window.print()" style="margin-left: 15px; cursor: pointer;">直接打印</button>
+</div>
+
+<div id="print-area" class="badge-list">
+</div>
+
+<script>
+    // ... 这里保持你之前的 JS 代码不变 ...
+    // (包括 globalPayload, formatDate, $.ajax, renderWithCurrentSize 等)
+    let globalPayload = null;
+
+    function formatDate(dateVal) {
+        if (!dateVal) return '';
+        try {
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return dateVal;
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            return dateVal;
+        }
+    }
+
+    $(document).ready(function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticket = urlParams.get('ticket');
+        if (!ticket) {
+            alert("错误：未找到票据");
+            return;
+        }
+
+        $.ajax({
+            url: '/api/card-template/payload-by-ticket/' + ticket,
+            type: 'GET',
+            success: function (response) {
+                if (response.status == "200" && response.content) {
+                    globalPayload = response.content;
+                    const template = globalPayload.cardTemplate;
+                    if (template && template.cssContent) {
+                        let finalCss = template.cssContent.replace(/\${BG_IMAGE_URL}/g, template.bgImageUrl || '');
+                        $('#dynamic-template-css').text(finalCss);
+                        renderWithCurrentSize();
+                    }
+                }
+            }
+        });
+        $('#sizeSelector').on('change', renderWithCurrentSize);
+    });
+
+    function renderWithCurrentSize() {
+        if (!globalPayload) return;
+        const sizeMode = $('#sizeSelector').val();
+        const template = globalPayload.cardTemplate;
+        const employees = globalPayload.employeeList;
+        const isHorizontal = template.layout === 'horizontal';
+        const baseWidth = template.baseWidth || (isHorizontal ? 370 : 230);
+        const scale = {small: 0.8, medium: 1, large: 1.2}[sizeMode];
+        const finalWidth = baseWidth * scale;
+        const printCols = isHorizontal ? 2 : 3;
+
+        const container = $('#print-area');
+        container.css({'--item-width': finalWidth + 'px', '--print-cols': printCols});
+        container.empty();
+
+        employees.forEach(emp => {
+            let html = template.htmlContent;
+            Object.keys(emp).forEach(key => {
+                const regex = new RegExp(`\\\${${key}}`, 'gi');
+                let value = emp[key];
+                if (key === 'entryDate') value = formatDate(value);
+                if (key === 'photoBase64' && value && typeof value === 'string' && !value.startsWith('data:')) {
+                    const head = value.charAt(0);
+                    let mime = head === '/' ? 'jpeg' : head === 'i' ? 'png' : head === 'R' ? 'gif' : 'webp';
+                    value = `data:image/${mime};base64,${value}`;
+                }
+                html = html.replace(regex, value ?? '');
+            });
+            html = html.replace(/\${SIZE_CLASS}/g, 'size-' + sizeMode);
+            html = html.replace(/\${BG_IMAGE_URL}/g, template.bgImageUrl || '');
+            container.append(html);
+        });
+    }
+</script>
+</body>
+</html>

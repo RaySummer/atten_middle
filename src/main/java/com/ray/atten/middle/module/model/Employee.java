@@ -16,11 +16,7 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "employee")
-public class Employee implements Serializable {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Employee extends BaseEntity implements Serializable {
 
     // 员工的工号/PIN，是主键
     @Column(unique = true, nullable = false)
@@ -61,8 +57,9 @@ public class Employee implements Serializable {
     // 同步到数据库的时间
     private LocalDateTime syncTime;
 
-    @PrePersist
-    public void prePersist() {
+    @Override
+    public void onCreate() {
+        super.onCreate();
         this.syncTime = LocalDateTime.now();
         if (this.privilege == null) this.privilege = 0;
         if (this.biologyNo == null) this.biologyNo = "0";

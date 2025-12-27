@@ -1,5 +1,6 @@
 package com.ray.atten.middle.module.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ray.atten.middle.module.model.Device;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,9 +14,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class DeviceDto implements Serializable {
-
-    private Long id;
+public class DeviceDto extends BaseDto implements Serializable {
 
     private String deviceSn;
 
@@ -38,20 +37,15 @@ public class DeviceDto implements Serializable {
     private Boolean isOnline;
 
     //最后一次心跳时间
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime lastSeen;
-
-    // 创建时间
-    private LocalDateTime createTime;
-
-    // 修改时间
-    private LocalDateTime updateTime;
 
     public static DeviceDto convertToDto(Device device) {
         if (device == null) {
             return null;
         }
         DeviceDto dto = new DeviceDto();
-        dto.setId(device.getId());
+        dto.setUuid(device.getUuid());
         dto.setDeviceSn(device.getDeviceSn());
         dto.setAlias(device.getAlias());
         dto.setLocation(device.getLocation());

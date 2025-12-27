@@ -1,7 +1,6 @@
 package com.ray.atten.middle.module.controller;
 
 import com.ray.atten.middle.module.dto.*;
-import com.ray.atten.middle.module.model.OaEmployee;
 import com.ray.atten.middle.module.service.AttendanceGroupService;
 import com.ray.atten.middle.module.service.AttendanceService;
 import com.ray.atten.middle.module.service.DeviceService;
@@ -36,7 +35,7 @@ public class OaEmployeeController {
      * @return 員工列表的 Page 對象 (包含內容、總頁數、總記錄數等)
      */
     @PostMapping("/oa-employees/query")
-    public ResponseEntity<GlobalResponseBody> queryEmployees(@RequestBody OaEmployeeQueryRequest request) {
+    public ResponseEntity<GlobalResponseBody> queryEmployees(@RequestBody OaEmployeeQueryPageRequest request) {
         return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", oaEmployeeService.queryEmployees(request)));
     }
 

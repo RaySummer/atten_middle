@@ -7,7 +7,7 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class EmployeeSyncRequest implements Serializable {
+public class EmployeeSyncRequest extends BaseDto implements Serializable {
 
     // 工号
     private String pin;

@@ -16,20 +16,14 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "attendance_logs")
-public class AttendanceLog implements Serializable {
+public class AttendanceLog extends BaseEntity implements Serializable {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
-    private Long id;
 
     private String userPin;    // 工号
     private String deviceSn;   // 设备序列号
     private LocalDateTime verifyTime; // 打卡时间
     private Integer status;    // 状态(0:上班, 1:下班等)
     private Integer verifyType;// 验证方式
-
-    private LocalDateTime createTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -40,10 +34,5 @@ public class AttendanceLog implements Serializable {
             foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT) // 关键：禁止生成外键约束
     )
     private OaEmployee employee;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createTime = LocalDateTime.now();
-    }
 
 }

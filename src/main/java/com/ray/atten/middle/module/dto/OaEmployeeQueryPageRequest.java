@@ -9,7 +9,7 @@ import java.io.Serializable;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class OaEmployeeQueryRequest implements Serializable {
+public class OaEmployeeQueryPageRequest implements Serializable {
 
     // --- 模糊查詢條件 (支持 pin 或 name 模糊匹配) ---
     private String keyword;

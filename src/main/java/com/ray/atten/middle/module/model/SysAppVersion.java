@@ -16,11 +16,7 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "sys_app_version")
-public class SysAppVersion implements Serializable {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class SysAppVersion extends BaseEntity implements Serializable {
 
     private String versionCode;
 
@@ -29,12 +25,5 @@ public class SysAppVersion implements Serializable {
     private String updateLog;
 
     private Boolean forceUpdate;
-
-    private LocalDateTime createTime;
-
-    @PrePersist
-    public void prePersist() {
-        this.createTime = LocalDateTime.now();
-    }
 
 }

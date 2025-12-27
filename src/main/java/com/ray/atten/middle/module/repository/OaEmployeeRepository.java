@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Repository
 public interface OaEmployeeRepository extends JpaRepository<OaEmployee, Long>, JpaSpecificationExecutor<OaEmployee> {
@@ -16,4 +17,6 @@ public interface OaEmployeeRepository extends JpaRepository<OaEmployee, Long>, J
      * Spring Data JPA 會自動實現這個方法，性能較高。
      */
     List<OaEmployee> findByPinIn(Set<String> pins);
+
+    List<OaEmployee> findAllByUuidIn(List<UUID> ids);
 }

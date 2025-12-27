@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class OaEmployeeRequest implements Serializable {
+public class OaEmployeeRequest extends BaseDto implements Serializable {
 
     private String pin;         // 員工工號 (PIN)
     private String name;        // 員工姓名

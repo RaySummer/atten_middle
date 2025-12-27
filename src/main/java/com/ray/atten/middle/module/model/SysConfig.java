@@ -16,11 +16,7 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "sys_config")
-public class SysConfig implements Serializable {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class SysConfig extends BaseEntity implements Serializable {
 
     private String configKey;
 
@@ -28,18 +24,4 @@ public class SysConfig implements Serializable {
 
     private String configDesc;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @PrePersist
-    public void prePersist() {
-        this.createTime = LocalDateTime.now();
-        this.updateTime = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updateTime = LocalDateTime.now();
-    }
 }

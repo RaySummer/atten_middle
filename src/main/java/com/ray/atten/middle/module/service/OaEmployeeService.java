@@ -2,7 +2,7 @@ package com.ray.atten.middle.module.service;
 
 
 import com.ray.atten.middle.module.dto.OaEmployeeDto;
-import com.ray.atten.middle.module.dto.OaEmployeeQueryRequest;
+import com.ray.atten.middle.module.dto.OaEmployeeQueryPageRequest;
 import com.ray.atten.middle.module.dto.OaEmployeeRequest;
 import com.ray.atten.middle.module.model.EmployeeSyncQueue;
 import com.ray.atten.middle.module.model.OaEmployee;
@@ -46,7 +46,7 @@ public class OaEmployeeService {
      * @return 包含 OaEmployeeDto 的分页结果
      */
     @Transactional(readOnly = true) // 确保查询是只读的
-    public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryRequest request) {
+    public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
 
         // --- 第 1 步: 执行主查询 (OaEmployee) ---
 
@@ -147,7 +147,7 @@ public class OaEmployeeService {
     // 辅助方法：将 OaEmployee 转换为 OaEmployeeDto（基础字段）
     private OaEmployeeDto convertToDto(OaEmployee oaEmployee) {
         OaEmployeeDto dto = new OaEmployeeDto();
-        dto.setId(oaEmployee.getId());
+        dto.setUuid(oaEmployee.getUuid());
         dto.setPin(oaEmployee.getPin());
         dto.setName(oaEmployee.getName());
         dto.setCompany(oaEmployee.getCompany());

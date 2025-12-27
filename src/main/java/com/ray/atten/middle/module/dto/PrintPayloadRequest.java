@@ -3,20 +3,17 @@ package com.ray.atten.middle.module.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.NonNull;
 
 import java.io.Serializable;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SysConfigRequest extends BaseDto implements Serializable {
+public class PrintPayloadRequest implements Serializable {
 
-    @NonNull
-    private String key;
-    @NonNull
-    private String value;
+    private UUID templateId;
 
-    private String desc;
-
+    private List<UUID> employeeIds;
 }

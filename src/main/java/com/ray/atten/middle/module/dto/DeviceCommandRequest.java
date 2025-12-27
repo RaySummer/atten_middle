@@ -9,7 +9,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class DeviceCommandRequest implements Serializable {
+public class DeviceCommandRequest extends BaseDto implements Serializable {
 
     /**
      * device sn

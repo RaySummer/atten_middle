@@ -1,6 +1,5 @@
 package com.ray.atten.middle.module.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,7 +7,6 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -19,11 +17,7 @@ import java.util.Set;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "attendance_group")
-public class AttendanceGroup implements Serializable {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class AttendanceGroup extends BaseEntity implements Serializable {
 
     @Column(unique = true, nullable = false)
     private String groupName;
@@ -40,17 +34,4 @@ public class AttendanceGroup implements Serializable {
     )
     private Set<Device> devices = new HashSet<>();
 
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createTime = LocalDateTime.now();
-        this.updateTime = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updateTime = LocalDateTime.now();
-    }
 }

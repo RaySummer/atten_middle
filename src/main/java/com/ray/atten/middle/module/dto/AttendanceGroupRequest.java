@@ -10,9 +10,8 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AttendanceGroupRequest implements Serializable {
+public class AttendanceGroupRequest extends BaseDto implements Serializable {
 
-    private Long groupId;
     private String groupName;
     private List<String> deviceSns;
 

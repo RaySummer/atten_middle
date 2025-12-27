@@ -16,13 +16,9 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "oa_employee")
-public class OaEmployee implements Serializable {
+public class OaEmployee extends BaseEntity implements Serializable {
 
-    // 主鍵
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+    private String avatar;      //员工头像
     // 核心信息
     private String pin;         // 員工工號 (PIN)
     private String name;        // 員工姓名
@@ -30,6 +26,7 @@ public class OaEmployee implements Serializable {
     // 組織結構 (未來級聯查詢的基礎)
     private String company;     // 所屬分公司/機構
     private String dept;        // 所屬部門
+    private String post;        // 职位
 
     // 狀態和時間
     private Boolean inService;  // 是否在職 (true/false)
@@ -37,17 +34,5 @@ public class OaEmployee implements Serializable {
     private String officeLocation; //办公地点
 
     private LocalDateTime entryDate; // 入職時間
-    private LocalDateTime createTime; // 創建時間
-    private LocalDateTime updateTime; // 修改時間
 
-    @PrePersist
-    public void prePersist() {
-        this.createTime = LocalDateTime.now();
-        this.updateTime = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updateTime = LocalDateTime.now();
-    }
 }

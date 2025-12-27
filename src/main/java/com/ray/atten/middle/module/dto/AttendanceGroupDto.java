@@ -10,9 +10,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AttendanceGroupDto implements Serializable {
-
-    private Long id;
+public class AttendanceGroupDto extends BaseDto implements Serializable {
 
     private String groupName;
 
