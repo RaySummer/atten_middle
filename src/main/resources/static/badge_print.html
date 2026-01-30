@@ -11,7 +11,6 @@
             margin: 0;
             padding: 0;
             font-family: "Microsoft YaHei", sans-serif;
-            /* 强制浏览器渲染色彩 */
             color-scheme: light;
         }
 
@@ -41,15 +40,13 @@
         @media print {
             @page {
                 size: A4;
-                margin: 0; /* 移除浏览器默认页眉页脚 */
+                margin: 0;
             }
 
             * {
-                /* 核心：强制显示背景和彩色 */
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
-                /* 确保图片渲染质量 */
                 image-rendering: -webkit-optimize-contrast;
             }
 
@@ -59,14 +56,13 @@
 
             body {
                 background: white !important;
-                -webkit-print-color-adjust: exact;
             }
 
             .badge-list {
-                width: 210mm; /* 严格对齐 A4 */
+                width: 210mm;
                 grid-template-columns: repeat(var(--print-cols, 3), 1fr);
                 gap: 5px;
-                padding: 10mm; /* 给打印留一点边距 */
+                padding: 10mm;
                 margin: 0;
                 background: white !important;
             }
@@ -86,35 +82,49 @@
     <button onclick="window.print()" style="margin-left: 15px; cursor: pointer;">直接打印</button>
 </div>
 
-<div id="print-area" class="badge-list">
-</div>
+<div id="print-area" class="badge-list"></div>
 
 <script>
-    // ... 这里保持你之前的 JS 代码不变 ...
-    // (包括 globalPayload, formatDate, $.ajax, renderWithCurrentSize 等)
     let globalPayload = null;
 
-    function formatDate(dateVal) {
-        if (!dateVal) return '';
-        try {
-            const d = new Date(dateVal);
-            if (isNaN(d.getTime())) return dateVal;
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        } catch (e) {
-            return dateVal;
+    // 智能处理图片源：自动补全前缀，自动过滤非法路径
+    function fixImageSource(str, fieldName) {
+        if (!str || typeof str !== 'string') return '';
+
+        let val = str.trim();
+
+        // 1. 如果本身就是合法的路径或已带前缀的Base64，直接返回
+        if (val.startsWith('data:') || val.startsWith('http') || (val.startsWith('/') && val.length < 500)) {
+            return val;
         }
+
+        // 2. 如果是纯 Base64 (比如你的 UklGR...)，则补全前缀
+        const head = val.charAt(0);
+        let mime = 'png';
+        switch (head) {
+            case '/':
+                mime = 'jpeg';
+                break;
+            case 'i':
+                mime = 'png';
+                break;
+            case 'R':
+                mime = 'gif';
+                break;
+            case 'U':
+                mime = 'webp';
+                break; // 匹配你的 WebP 数据
+            default:
+                mime = 'png';
+        }
+
+        const result = `data:image/${mime};base64,${val}`;
+        return result;
     }
 
     $(document).ready(function () {
         const urlParams = new URLSearchParams(window.location.search);
         const ticket = urlParams.get('ticket');
-        if (!ticket) {
-            alert("错误：未找到票据");
-            return;
-        }
 
         $.ajax({
             url: '/api/card-template/payload-by-ticket/' + ticket,
@@ -122,12 +132,7 @@
             success: function (response) {
                 if (response.status == "200" && response.content) {
                     globalPayload = response.content;
-                    const template = globalPayload.cardTemplate;
-                    if (template && template.cssContent) {
-                        let finalCss = template.cssContent.replace(/\${BG_IMAGE_URL}/g, template.bgImageUrl || '');
-                        $('#dynamic-template-css').text(finalCss);
-                        renderWithCurrentSize();
-                    }
+                    renderWithCurrentSize();
                 }
             }
         });
@@ -136,36 +141,63 @@
 
     function renderWithCurrentSize() {
         if (!globalPayload) return;
-        const sizeMode = $('#sizeSelector').val();
+
         const template = globalPayload.cardTemplate;
-        const employees = globalPayload.employeeList;
-        const isHorizontal = template.layout === 'horizontal';
-        const baseWidth = template.baseWidth || (isHorizontal ? 370 : 230);
-        const scale = {small: 0.8, medium: 1, large: 1.2}[sizeMode];
-        const finalWidth = baseWidth * scale;
-        const printCols = isHorizontal ? 2 : 3;
+        const employees = globalPayload.employeeList || [];
+        const sizeMode = $('#sizeSelector').val();
+
+        // 1. 处理背景图
+        const finalBgUrl = fixImageSource(template.bgImageUrl || '');
+        if (template.cssContent) {
+            let finalCss = template.cssContent.replace(/\${BG_IMAGE_URL}/g, finalBgUrl);
+            $('#dynamic-template-css').text(finalCss);
+        }
 
         const container = $('#print-area');
-        container.css({'--item-width': finalWidth + 'px', '--print-cols': printCols});
         container.empty();
 
-        employees.forEach(emp => {
+        employees.forEach((emp, index) => {
             let html = template.htmlContent;
+
+            // --- 核心修改：智能替换循环 ---
             Object.keys(emp).forEach(key => {
-                const regex = new RegExp(`\\\${${key}}`, 'gi');
-                let value = emp[key];
-                if (key === 'entryDate') value = formatDate(value);
-                if (key === 'photoBase64' && value && typeof value === 'string' && !value.startsWith('data:')) {
-                    const head = value.charAt(0);
-                    let mime = head === '/' ? 'jpeg' : head === 'i' ? 'png' : head === 'R' ? 'gif' : 'webp';
-                    value = `data:image/${mime};base64,${value}`;
+                let val = emp[key];
+
+                // 如果这个值是长字符串（可能是Base64），或者是日期
+                if (typeof val === 'string') {
+                    val = val.trim();
+
+                    // 只要是以 UklGR (WebP) 等特征开头的纯 Base64，不看 key 是什么，直接补全
+                    if (!val.startsWith('data:') && !val.startsWith('http') && !val.startsWith('/')) {
+                        const head = val.substring(0, 5);
+                        if (head.includes('UklGR')) val = 'data:image/webp;base64,' + val;
+                        else if (head.includes('iVBOR')) val = 'data:image/png;base64,' + val;
+                        else if (head.includes('/9j/')) val = 'data:image/jpeg;base64,' + val;
+                        else if (val.length > 100) val = 'data:image/png;base64,' + val; // 兜底
+                    }
                 }
-                html = html.replace(regex, value ?? '');
+
+                if (key.toLowerCase().includes('date')) {
+                    val = formatDate(val);
+                }
+
+                // 执行替换（不区分大小写）
+                const regex = new RegExp(`\\$\\{${key}\\}`, 'gi');
+                html = html.replace(regex, val ?? '');
             });
+
+            // 替换公共变量
+            html = html.replace(/\${BG_IMAGE_URL}/g, finalBgUrl);
             html = html.replace(/\${SIZE_CLASS}/g, 'size-' + sizeMode);
-            html = html.replace(/\${BG_IMAGE_URL}/g, template.bgImageUrl || '');
+
             container.append(html);
         });
+    }
+
+    function formatDate(dateVal) {
+        if (!dateVal) return '';
+        const d = new Date(dateVal);
+        return isNaN(d.getTime()) ? dateVal : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 </script>
 </body>

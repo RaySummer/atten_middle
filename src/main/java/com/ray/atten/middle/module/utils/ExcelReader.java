@@ -5,6 +5,7 @@ import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.listener.ReadListener;
 
 import java.util.Map;
+import java.util.UUID;
 
 public class ExcelReader {
 
@@ -24,14 +25,20 @@ public class ExcelReader {
                 String pin = data.get(1);
                 String dept = data.get(2);
                 String company = data.get(3);
-                String officeLocation = data.get(5);
-                String entryTime = data.get(6);
+                String officeLocation = data.get(4);
+                String entryTime = data.get(5);
+                String post = data.get(6);
+                String uuid = UUID.randomUUID().toString();
 
                 // 4. 拼装 SQL
+//                String sql = String.format(
+//                        "INSERT INTO %s (uuid, name, pin, dept, company, in_service, office_location, entry_date, create_time, update_time, post)" +
+//                                " VALUES ('%s', '%s', '%s', '%s', '%s', 1, '%s', '%s', NOW(), NOW(), '%s');",
+//                        tableName, uuid, name, pin, dept, company, officeLocation, entryTime, post
+//                );
                 String sql = String.format(
-                        "INSERT INTO %s (name, pin, dept, company, in_service, office_location, entry_date, create_time, update_time)" +
-                                " VALUES ('%s', '%s', '%s', '%s', 't', '%s', '%s', NOW(), NOW());",
-                        tableName, name, pin, dept, company, officeLocation, entryTime
+                        "UPDATE %s SET POST = '%s' WHERE PIN = '%s'; ",
+                        tableName, post, pin
                 );
 
                 System.out.println(sql);
