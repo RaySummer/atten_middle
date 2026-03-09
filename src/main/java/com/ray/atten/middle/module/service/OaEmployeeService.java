@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import javax.persistence.criteria.Join;
+import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,7 +47,95 @@ public class OaEmployeeService {
      * @param request 查询请求
      * @return 包含 OaEmployeeDto 的分页结果
      */
-    @Transactional(readOnly = true) // 确保查询是只读的
+    @Transactional()
+    public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
+
+        // --- 第 1 步: 构建排序逻辑 ---
+        // 这里的逻辑是：
+        // 1. 是否有指纹 (ASC): 数据库中 NULL 或 空 通常排在前面，或者我们手动指定排序优先级
+        // 2. 是否有照片 (ASC)
+        // 3. 入职时间 (DESC): 新入职的排在前面（或者根据你需求调整为 ASC）
+        // 注意：这里的排序字段名必须对应实体类属性名
+        Sort customSort = Sort.by(Sort.Order.desc("entryDate"));
+
+        Pageable pageable = PageRequest.of(
+                request.getPageNum() - 1,
+                request.getPageSize(),
+                customSort
+        );
+
+        // --- 第 2 步: 构造查询规范 (Specification) ---
+        Specification<OaEmployee> spec = (root, query, cb) -> {
+            // 重要：为了能按关联表字段排序，必须进行 Left Join
+            // fetch 可以在查询主表时顺带抓取关联表，防止 N+1 问题
+            Join<OaEmployee, EmployeeSyncQueue> syncJoin = root.join("syncQueue", JoinType.LEFT);
+
+            List<Predicate> predicates = new ArrayList<>();
+
+            // A. 模糊查询 (PIN 或 Name)
+            if (StringUtils.hasText(request.getKeyword())) {
+                String likePattern = "%" + request.getKeyword().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("pin")), likePattern),
+                        cb.like(cb.lower(root.get("name")), likePattern)
+                ));
+            }
+
+            // B. 在职状态
+            if (request.getInService() != null) {
+                predicates.add(cb.equal(root.get("inService"), request.getInService()));
+            }
+
+            // C. 指纹筛选 (前端下拉框条件)
+            if (request.getHasFingerprint() != null) {
+                if (request.getHasFingerprint()) {
+                    predicates.add(cb.and(cb.isNotNull(syncJoin.get("fingerprint")), cb.notEqual(syncJoin.get("fingerprint"), "")));
+                } else {
+                    predicates.add(cb.or(cb.isNull(syncJoin.get("fingerprint")), cb.equal(syncJoin.get("fingerprint"), "")));
+                }
+            }
+
+            // D. 照片筛选 (前端下拉框条件)
+            if (request.getHasPhoto() != null) {
+                if (request.getHasPhoto()) {
+                    // 已有照片：不为 NULL 且 长度大于 0
+                    predicates.add(cb.and(
+                            cb.isNotNull(syncJoin.get("photoBase64")),
+                            cb.greaterThan(cb.length(syncJoin.get("photoBase64")), 0)
+                    ));
+                } else {
+                    // 未录照片：为 NULL 或 长度等于 0
+                    predicates.add(cb.or(
+                            cb.isNull(syncJoin.get("photoBase64")),
+                            cb.equal(cb.length(syncJoin.get("photoBase64")), 0)
+                    ));
+                }
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        // --- 第 3 步: 执行查询 ---
+        Page<OaEmployee> oaEmployeePage = oaEmployeeRepository.findAll(spec, pageable);
+
+        // --- 第 4 步: 组装 DTO ---
+        List<OaEmployeeDto> dtoList = oaEmployeePage.getContent().stream()
+                .map(oaEmployee -> {
+                    OaEmployeeDto dto = convertToDto(oaEmployee);
+                    // 直接从 Join 抓取到的对象中获取数据，无需再次查询 Map
+                    EmployeeSyncQueue syncData = oaEmployee.getSyncQueue();
+                    if (syncData != null) {
+                        dto.setFingerprint(syncData.getFingerprint());
+                        dto.setPhotoBase64(syncData.getPhotoBase64());
+                        dto.setFid(syncData.getFid());
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtoList, pageable, oaEmployeePage.getTotalElements());
+    }
+   /* @Transactional(readOnly = true) // 确保查询是只读的
     public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
 
         // --- 第 1 步: 执行主查询 (OaEmployee) ---
@@ -142,7 +232,7 @@ public class OaEmployeeService {
                 pageable,
                 oaEmployeePage.getTotalElements() // 使用原始的总记录数
         );
-    }
+    }*/
 
     // 辅助方法：将 OaEmployee 转换为 OaEmployeeDto（基础字段）
     private OaEmployeeDto convertToDto(OaEmployee oaEmployee) {
@@ -256,6 +346,10 @@ public class OaEmployeeService {
         }
 
         return existing;
+    }
+
+    public List<OaEmployeeDto> findAllEmployee() {
+        return oaEmployeeRepository.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
 

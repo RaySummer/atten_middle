@@ -42,4 +42,6 @@ public interface DeviceRepository extends JpaRepository<Device, Long>, JpaSpecif
     @Query("UPDATE Device d SET d.isOnline = true, d.lastSeen = :now WHERE d.deviceSn = :sn")
     void updateOnlineStatus(@Param("sn") String sn, @Param("now") LocalDateTime now);
 
+//    List<Device> findByCompanies_UuidIn(List<String> companyNames);
+
 }

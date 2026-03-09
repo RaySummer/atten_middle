@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -16,6 +19,12 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "attendance_logs")
+@FilterDef(name = "companyFilter", parameters = @ParamDef(name = "names", type = "string"))
+// 核心逻辑：user_pin 必须在 (属于这些公司的员工 PIN 集合) 之中
+@Filter(
+        name = "companyFilter",
+        condition = "user_pin IN (SELECT e.pin FROM oa_employee e WHERE e.company IN (:names))"
+)
 public class AttendanceLog extends BaseEntity implements Serializable {
 
 

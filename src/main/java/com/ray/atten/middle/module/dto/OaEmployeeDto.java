@@ -1,12 +1,14 @@
 package com.ray.atten.middle.module.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ray.atten.middle.module.model.EmployeeSyncQueue;
 import com.ray.atten.middle.module.model.OaEmployee;
 import lombok.*;
 
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Getter
@@ -23,7 +25,7 @@ public class OaEmployeeDto extends BaseDto implements Serializable {
     private String post;
     private Boolean inService;  // 是否在職 (true/false)
     private String officeLocation; //办公地点
-//    @JsonFormat(pattern = "yyyy-MM-dd hh:mm:ss")
+    //    @JsonFormat(pattern = "yyyy-MM-dd hh:mm:ss")
     private LocalDateTime entryDate; // 入職時間
     private String fingerprint;
     private String photoBase64;

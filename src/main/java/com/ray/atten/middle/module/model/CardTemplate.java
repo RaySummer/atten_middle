@@ -1,9 +1,13 @@
 package com.ray.atten.middle.module.model;
 
+import com.ray.atten.middle.module.utils.SecurityConstants;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.ParamDef;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -16,6 +20,10 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "card_template")
+// 定义过滤器：名称为 companyFilter，接受一个名为 names 的字符串列表参数
+@FilterDef(name = SecurityConstants.COMPANY_FILTER_NAME, parameters = @ParamDef(name = SecurityConstants.COMPANY_PARAM_NAME, type = "string"))
+// 定义过滤逻辑：要求字段 company_name 在参数列表 :names 中
+@Filter(name = SecurityConstants.COMPANY_FILTER_NAME, condition = "company_name IN (:" + SecurityConstants.COMPANY_PARAM_NAME + ")")
 public class CardTemplate extends BaseEntity implements Serializable {
 
     @Column(unique = true, nullable = false)
@@ -36,6 +44,8 @@ public class CardTemplate extends BaseEntity implements Serializable {
 
     // 是否激活
     private Boolean active = Boolean.TRUE;
+    @Column(name = "company_name")
+    private String companyName;
 
     @Override
     protected void onCreate() {

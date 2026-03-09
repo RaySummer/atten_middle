@@ -187,3 +187,15 @@ END IF;
 END$$
 
 DELIMITER ;
+
+-- sys_operation_log
+DROP TRIGGER IF EXISTS trg_sys_operation_log_uuid$$
+CREATE TRIGGER trg_sys_operation_log_uuid BEFORE INSERT ON sys_operation_log
+    FOR EACH ROW
+BEGIN
+    IF NEW.uuid IS NULL OR NEW.uuid = '' THEN
+        SET NEW.uuid = UUID();
+END IF;
+END$$
+
+DELIMITER ;

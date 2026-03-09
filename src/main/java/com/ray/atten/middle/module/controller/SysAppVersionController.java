@@ -1,5 +1,6 @@
 package com.ray.atten.middle.module.controller;
 
+import com.ray.atten.middle.module.aspect.LogOperation;
 import com.ray.atten.middle.module.dto.GlobalResponseBody;
 import com.ray.atten.middle.module.model.SysAppVersion;
 import com.ray.atten.middle.module.service.SysAppVersionService;
@@ -56,6 +57,7 @@ public class SysAppVersionController {
     /**
      * 文件下载接口
      */
+    @LogOperation("文件下载")
     @GetMapping("/download/{fileName:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
         String updateDir = GlobalConfigHolder.getUpdateDir();
@@ -76,6 +78,7 @@ public class SysAppVersionController {
         }
     }
 
+    @LogOperation("上传新的安装包")
     @PostMapping("/upload")
     public ResponseEntity<GlobalResponseBody> uploadNewVersion(
             @RequestParam("file") MultipartFile file,

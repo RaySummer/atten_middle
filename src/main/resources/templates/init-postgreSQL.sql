@@ -85,3 +85,35 @@ UPDATE sys_config SET uuid = uuid_generate_v4()::text WHERE uuid IS NULL;
 ALTER TABLE sys_config ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()::text;
 ALTER TABLE sys_config ALTER COLUMN uuid SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sys_config_uuid ON sys_config(uuid);
+
+-- create admin company mapping
+-- 2. 管理员与公司的多对多关联表
+CREATE TABLE `admin_company_mapping` (
+     `admin_id` BIGINT NOT NULL,
+     `company_id` BIGINT NOT NULL,
+     PRIMARY KEY (`admin_id`, `company_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE admin_company_mapping ADD COLUMN IF NOT EXISTS uuid VARCHAR(36);
+UPDATE admin_company_mapping SET uuid = uuid_generate_v4()::text WHERE uuid IS NULL;
+ALTER TABLE admin_company_mapping ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()::text;
+ALTER TABLE admin_company_mapping ALTER COLUMN uuid SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_company_mapping_uuid ON admin_company_mapping(uuid);
+
+ALTER TABLE sys_company ADD COLUMN IF NOT EXISTS uuid VARCHAR(36);
+UPDATE sys_company SET uuid = uuid_generate_v4()::text WHERE uuid IS NULL;
+ALTER TABLE sys_company ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()::text;
+ALTER TABLE sys_company ALTER COLUMN uuid SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sys_company_uuid ON sys_company(uuid);
+
+ALTER TABLE sys_admin_user ADD COLUMN IF NOT EXISTS uuid VARCHAR(36);
+UPDATE sys_admin_user SET uuid = uuid_generate_v4()::text WHERE uuid IS NULL;
+ALTER TABLE sys_admin_user ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()::text;
+ALTER TABLE sys_admin_user ALTER COLUMN uuid SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sys_admin_user_uuid ON sys_admin_user(uuid);
+
+ALTER TABLE sys_operation_log ADD COLUMN IF NOT EXISTS uuid VARCHAR(36);
+UPDATE sys_operation_log SET uuid = uuid_generate_v4()::text WHERE uuid IS NULL;
+ALTER TABLE sys_operation_log ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()::text;
+ALTER TABLE sys_operation_log ALTER COLUMN uuid SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sys_operation_log_uuid ON sys_operation_log(uuid);

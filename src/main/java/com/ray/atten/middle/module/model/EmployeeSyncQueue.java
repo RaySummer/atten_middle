@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -38,8 +39,8 @@ public class EmployeeSyncQueue extends BaseEntity implements Serializable {
     private String fingerprint;
 
     // --- 修改点：照片改为 Base64 字符串存储 ---
-    @Lob
     @Column(columnDefinition = "TEXT")
+    @Type(type = "text")
     private String photoBase64;
 
     // 0: 待同步, 1: 已处理

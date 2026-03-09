@@ -2,8 +2,11 @@ package com.ray.atten.middle.module.service;
 
 import com.ray.atten.middle.module.dto.DeviceDto;
 import com.ray.atten.middle.module.dto.DeviceRequest;
+import com.ray.atten.middle.module.model.Company;
 import com.ray.atten.middle.module.model.Device;
+import com.ray.atten.middle.module.repository.CompanyRepository;
 import com.ray.atten.middle.module.repository.DeviceRepository;
+import com.ray.atten.middle.module.service.base.DataFilterService;
 import com.ray.atten.middle.module.utils.DeviceHeartbeatHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +29,10 @@ public class DeviceService {
 
     @Autowired
     private DeviceRepository deviceRepository;
+    @Autowired
+    private DataFilterService dataFilterService;
+    @Autowired
+    private CompanyRepository companyRepository;
 
     /**
      * 新增或更新考勤机信息
@@ -32,28 +40,39 @@ public class DeviceService {
      * @param request 前端传入的设备信息
      * @return 保存后的 Device 实体
      */
+    @Transactional // 必须开启事务，保证多对多关联表的原子性
     public DeviceDto saveOrUpdateDevice(DeviceRequest request) {
-
         Device device = null;
-        if (request.getDeviceSn() != null) {
-            // 根据 SN 查找现有设备，实现“覆盖式更新”或“新增”
+        if (StringUtils.isNotEmpty(request.getDeviceSn())) {
             device = deviceRepository.findByDeviceSn(request.getDeviceSn());
         }
+
         if (device == null) {
             device = new Device();
+            device.setDeviceSn(request.getDeviceSn()); // 仅在新增时设置 SN
         }
 
-        device.setDeviceSn(request.getDeviceSn()); // 序列号只能在创建时设置
+        // --- 多对多关联处理 ---
+        if (request.getCompanyUuids() != null) {
+            // 如果传入了列表（即使是空列表），执行更新
+            List<Company> companyList = companyRepository.findAllByUuidIn(request.getCompanyUuids());
+            // 重新设置关联（Hibernate 会自动处理中间表的 DELETE 和 INSERT）
+            device.setCompanies(new HashSet<>(companyList));
+        } else {
+            // 如果 request 里的 companyUuids 是 null，视业务需求决定是否清空
+            // 通常建议如果前端传了空数组，则清空；如果没传该字段，则保持现状
+        }
 
-        // 4. 更新字段
+        // --- 更新其他字段 ---
         device.setAlias(request.getAlias());
         device.setLocation(request.getLocation());
         device.setModel(request.getModel());
         device.setIpAddress(request.getIpAddress());
         device.setActive(request.getActive());
 
-        // 5. 保存到数据库 (利用 @PreUpdate 自动更新 updateTime)
-        return DeviceDto.convertToDto(deviceRepository.save(device));
+        // 执行保存
+        Device savedDevice = deviceRepository.save(device);
+        return DeviceDto.convertToDto(savedDevice);
     }
 
     public List<DeviceDto> findAllDevices() {

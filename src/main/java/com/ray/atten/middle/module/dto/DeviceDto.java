@@ -1,6 +1,7 @@
 package com.ray.atten.middle.module.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ray.atten.middle.module.model.Company;
 import com.ray.atten.middle.module.model.Device;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +11,8 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Data
 @AllArgsConstructor
@@ -36,6 +39,8 @@ public class DeviceDto extends BaseDto implements Serializable {
     //物理状态（设备当前是否连通）
     private Boolean isOnline;
 
+    private List<UUID> companyUuids;
+
     //最后一次心跳时间
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime lastSeen;
@@ -56,6 +61,17 @@ public class DeviceDto extends BaseDto implements Serializable {
         dto.setUpdateTime(device.getUpdateTime());
         dto.setIsOnline(device.getIsOnline());
         dto.setLastSeen(device.getLastSeen());
+
+        if (device.getCompanies() != null) {
+            // 将关联的 Company 对象的 UUID 提取出来给 DTO
+            List<UUID> uuids = device.getCompanies().stream()
+                    .map(Company::getUuid) // 假设 Company 类有 getUuid()
+                    .collect(Collectors.toList());
+            dto.setCompanyUuids(uuids);
+
+        } else {
+            dto.setCompanyUuids(new ArrayList<>());
+        }
 
         return dto;
     }

@@ -1,5 +1,6 @@
 package com.ray.atten.middle.module.controller;
 
+import com.ray.atten.middle.module.aspect.LogOperation;
 import com.ray.atten.middle.module.dto.CardTemplateRequest;
 import com.ray.atten.middle.module.dto.GlobalResponseBody;
 import com.ray.atten.middle.module.dto.PrintPayloadDto;
@@ -34,6 +35,7 @@ public class CardTemplateController {
     /**
      * 1. 接收长参数，存入缓存，返回短令牌
      */
+    @LogOperation("获取打印令牌")
     @PostMapping("/prepare-print")
     @ResponseBody
     public ResponseEntity<String> preparePrint(@RequestBody PrintPayloadRequest request) {
@@ -55,6 +57,7 @@ public class CardTemplateController {
     /**
      * 跳转到打印页面
      */
+    @LogOperation("跳转打印页面")
     @GetMapping("/go-print/{ticket}")
     public String goPrint(@PathVariable String ticket) {
         return "redirect:/badge_print.html?ticket=" + ticket;
@@ -63,6 +66,7 @@ public class CardTemplateController {
     /**
      * 前端根据令牌取数据
      */
+    @LogOperation("根据令牌获取数据")
     @GetMapping("/payload-by-ticket/{ticket}")
     @ResponseBody
     public ResponseEntity<GlobalResponseBody> getPayloadByTicket(@PathVariable String ticket) {
@@ -84,6 +88,7 @@ public class CardTemplateController {
     /**
      * 保存或更新模板
      */
+    @LogOperation("保存或更新模板")
     @PostMapping("/save")
     public ResponseEntity<GlobalResponseBody> saveTemplate(@RequestBody @Valid CardTemplateRequest request) {
         try {
@@ -111,6 +116,7 @@ public class CardTemplateController {
     /**
      * 删除模板
      */
+    @LogOperation("删除模板")
     @DeleteMapping("/{id}")
     public ResponseEntity<GlobalResponseBody> deleteTemplate(@PathVariable UUID uuid) {
         try {
@@ -125,6 +131,7 @@ public class CardTemplateController {
     /**
      * 切换模板状态
      */
+    @LogOperation("切换模板状态")
     @PatchMapping("/{id}/toggle-active")
     public ResponseEntity<GlobalResponseBody> toggleActive(@PathVariable UUID uuid) {
         try {

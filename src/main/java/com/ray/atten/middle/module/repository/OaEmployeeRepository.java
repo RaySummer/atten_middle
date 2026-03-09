@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,4 +20,10 @@ public interface OaEmployeeRepository extends JpaRepository<OaEmployee, Long>, J
     List<OaEmployee> findByPinIn(Set<String> pins);
 
     List<OaEmployee> findAllByUuidIn(List<UUID> ids);
+
+    // 虽然有 Aspect，但定义这个方法可以增加代码的可读性
+    List<OaEmployee> findByCompanyIn(List<String> companies);
+
+    // 根据 PIN 查找员工（通常用于流水归因，不受权限过滤影响）
+    Optional<OaEmployee> findByPin(String pin);
 }

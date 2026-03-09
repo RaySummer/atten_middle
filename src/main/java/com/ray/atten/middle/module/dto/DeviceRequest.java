@@ -6,6 +6,8 @@ import lombok.Setter;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.io.Serializable;
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -21,4 +23,5 @@ public class DeviceRequest extends BaseDto implements Serializable {
     private String model;    // 考勤机型号
     private String ipAddress; // 考勤机IP
     private Boolean active;  // 是否激活 (true/false)
+    private List<UUID> companyUuids;
 }

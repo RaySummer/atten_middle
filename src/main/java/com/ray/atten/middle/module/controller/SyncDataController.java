@@ -1,5 +1,6 @@
 package com.ray.atten.middle.module.controller;
 
+import com.ray.atten.middle.module.aspect.LogOperation;
 import com.ray.atten.middle.module.dto.EmployeeSyncRequest;
 import com.ray.atten.middle.module.dto.GlobalResponseBody;
 import com.ray.atten.middle.module.model.EmployeeSyncQueue;
@@ -31,6 +32,7 @@ public class SyncDataController {
      * 接收前端上传的员工数据，并推送到所有机器
      * 请求方式: POST (multipart/form-data)
      */
+    @LogOperation("同步数据到考勤机")
     @PostMapping("/sync-employee")
     public ResponseEntity<GlobalResponseBody> syncEmployee(@RequestBody List<EmployeeSyncRequest> empList) {
 
@@ -68,6 +70,7 @@ public class SyncDataController {
         return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "已保存指令到数据库，等待下次设备心跳时发送"));
     }
 
+    @LogOperation("同步新数据")
     @PostMapping("/sync-new-data")
     public ResponseEntity<GlobalResponseBody> syncCheckNewData(@RequestBody List<String> deviceSns) {
         if (deviceSns.isEmpty()) {

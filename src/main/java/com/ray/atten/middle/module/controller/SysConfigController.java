@@ -1,5 +1,6 @@
 package com.ray.atten.middle.module.controller;
 
+import com.ray.atten.middle.module.aspect.LogOperation;
 import com.ray.atten.middle.module.dto.GlobalResponseBody;
 import com.ray.atten.middle.module.dto.SysConfigRequest;
 import com.ray.atten.middle.module.service.SysConfigService;
@@ -18,6 +19,7 @@ public class SysConfigController {
      * 修改或新增配置项
      * 例如：POST /api/admin/config/update?key=UPDATE_FILES_DIR&value=D:/my_updates/
      */
+    @LogOperation("更新系统配置")
     @PostMapping("/update")
     public ResponseEntity<GlobalResponseBody> updateConfig(@RequestBody SysConfigRequest request) {
         try {

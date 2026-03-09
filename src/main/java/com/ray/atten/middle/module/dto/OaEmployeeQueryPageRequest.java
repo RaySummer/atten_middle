@@ -20,6 +20,9 @@ public class OaEmployeeQueryPageRequest implements Serializable {
     private String deptId;    // 未來用於部門篩選
     private Boolean inService; // 在職狀態篩選
 
+    private Boolean hasFingerprint;
+    private Boolean hasPhoto;
+
     // --- 分頁查詢條件 ---
     private int pageNum = 1;      // 當前頁碼 (默認第 1 頁)
     private int pageSize = 10;    // 每頁記錄數 (默認 10 條)

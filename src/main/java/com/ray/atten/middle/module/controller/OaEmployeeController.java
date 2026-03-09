@@ -28,6 +28,9 @@ public class OaEmployeeController {
     @Autowired
     private DeviceService deviceService;
 
+
+    // todo: 增加显示是否录入指纹人脸，增加分部显示，排序优先显示未录入按时间倒序
+
     /**
      * 使用 POST 請求查詢員工列表 (支持複雜查詢和分頁參數)
      * * @param request 包含所有查詢條件的 DTO
