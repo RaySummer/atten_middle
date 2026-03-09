@@ -31,6 +31,7 @@ public class BaseEntity implements Serializable {
     protected void onCreate() {
         this.createTime = LocalDateTime.now();
         this.updateTime = LocalDateTime.now();
+        this.uuid = UUID.randomUUID();
     }
 
     @PreUpdate

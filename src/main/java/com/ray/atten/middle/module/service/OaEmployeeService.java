@@ -246,7 +246,6 @@ public class OaEmployeeService {
         dto.setEntryDate(oaEmployee.getEntryDate());
         dto.setCreateTime(oaEmployee.getCreateTime());
         dto.setOfficeLocation(oaEmployee.getOfficeLocation());
-        // ... 复制其他 OaEmployee 中的字段
         return dto;
     }
 
