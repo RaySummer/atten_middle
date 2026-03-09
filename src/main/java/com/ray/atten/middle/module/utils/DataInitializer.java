@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -108,6 +109,7 @@ public class DataInitializer implements CommandLineRunner {
     private Company createCompany(String name) {
         Company c = new Company();
         c.setName(name);
+        c.setUuid(UUID.randomUUID());
         return companyRepository.save(c);
     }
 }
