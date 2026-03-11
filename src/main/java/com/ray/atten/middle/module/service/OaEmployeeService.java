@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
@@ -47,32 +48,20 @@ public class OaEmployeeService {
      * @param request 查询请求
      * @return 包含 OaEmployeeDto 的分页结果
      */
-    @Transactional()
+    @Transactional(readOnly = true)
     public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
 
-        // --- 第 1 步: 构建排序逻辑 ---
-        // 这里的逻辑是：
-        // 1. 是否有指纹 (ASC): 数据库中 NULL 或 空 通常排在前面，或者我们手动指定排序优先级
-        // 2. 是否有照片 (ASC)
-        // 3. 入职时间 (DESC): 新入职的排在前面（或者根据你需求调整为 ASC）
-        // 注意：这里的排序字段名必须对应实体类属性名
-        Sort customSort = Sort.by(Sort.Order.desc("entryDate"));
+        Pageable pageable = PageRequest.of(request.getPageNum() - 1, request.getPageSize());
 
-        Pageable pageable = PageRequest.of(
-                request.getPageNum() - 1,
-                request.getPageSize(),
-                customSort
-        );
-
-        // --- 第 2 步: 构造查询规范 (Specification) ---
         Specification<OaEmployee> spec = (root, query, cb) -> {
-            // 重要：为了能按关联表字段排序，必须进行 Left Join
-            // fetch 可以在查询主表时顺带抓取关联表，防止 N+1 问题
+            // 1. 必须使用 LEFT JOIN，确保即使 syncQueue 没记录，员工也能查出来
             Join<OaEmployee, EmployeeSyncQueue> syncJoin = root.join("syncQueue", JoinType.LEFT);
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // A. 模糊查询 (PIN 或 Name)
+            // --- 过滤逻辑 ---
+
+            // A. 关键字 (PIN/Name)
             if (StringUtils.hasText(request.getKeyword())) {
                 String likePattern = "%" + request.getKeyword().toLowerCase() + "%";
                 predicates.add(cb.or(
@@ -81,59 +70,52 @@ public class OaEmployeeService {
                 ));
             }
 
-            // B. 在职状态
+            // B. 在职状态 (关键点：只有不为 null 时才加条件，为 null 时查全部)
             if (request.getInService() != null) {
                 predicates.add(cb.equal(root.get("inService"), request.getInService()));
             }
 
-            // C. 指纹筛选 (前端下拉框条件)
+            // C. 指纹/照片筛选
             if (request.getHasFingerprint() != null) {
-                if (request.getHasFingerprint()) {
-                    predicates.add(cb.and(cb.isNotNull(syncJoin.get("fingerprint")), cb.notEqual(syncJoin.get("fingerprint"), "")));
-                } else {
-                    predicates.add(cb.or(cb.isNull(syncJoin.get("fingerprint")), cb.equal(syncJoin.get("fingerprint"), "")));
-                }
+                // 判定逻辑统一使用 coalesce 防止 NULL 导致过滤失效
+                Expression<Integer> len = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
+                predicates.add(request.getHasFingerprint() ? cb.greaterThan(len, 10) : cb.lessThanOrEqualTo(len, 10));
             }
-
-            // D. 照片筛选 (前端下拉框条件)
             if (request.getHasPhoto() != null) {
-                if (request.getHasPhoto()) {
-                    // 已有照片：不为 NULL 且 长度大于 0
-                    predicates.add(cb.and(
-                            cb.isNotNull(syncJoin.get("photoBase64")),
-                            cb.greaterThan(cb.length(syncJoin.get("photoBase64")), 0)
-                    ));
-                } else {
-                    // 未录照片：为 NULL 或 长度等于 0
-                    predicates.add(cb.or(
-                            cb.isNull(syncJoin.get("photoBase64")),
-                            cb.equal(cb.length(syncJoin.get("photoBase64")), 0)
-                    ));
-                }
+                Expression<Integer> len = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
+                predicates.add(request.getHasPhoto() ? cb.greaterThan(len, 10) : cb.lessThanOrEqualTo(len, 10));
             }
 
+            // --- 排序逻辑 (仅在数据查询时注入) ---
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+
+                // 使用 coalesce 确保即使 syncJoin 关联不到数据，长度也会被当做 0 处理
+                Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
+                Expression<Integer> photoLen = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
+
+                // 只有 (指纹 < 10) 且 (照片 < 10) 才是优先级 0 (最优先)
+                Expression<Integer> priority = cb.selectCase()
+                        .when(cb.and(cb.lessThan(fpLen, 10), cb.lessThan(photoLen, 10)), 0)
+                        .otherwise(1)
+                        .as(Integer.class);
+
+                query.orderBy(cb.asc(priority), cb.desc(root.get("entryDate")));
+            }
+
+            // 如果没有选任何条件，cb.and(...) 会生成一个 1=1 的条件
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        // --- 第 3 步: 执行查询 ---
-        Page<OaEmployee> oaEmployeePage = oaEmployeeRepository.findAll(spec, pageable);
-
-        // --- 第 4 步: 组装 DTO ---
-        List<OaEmployeeDto> dtoList = oaEmployeePage.getContent().stream()
-                .map(oaEmployee -> {
-                    OaEmployeeDto dto = convertToDto(oaEmployee);
-                    // 直接从 Join 抓取到的对象中获取数据，无需再次查询 Map
-                    EmployeeSyncQueue syncData = oaEmployee.getSyncQueue();
-                    if (syncData != null) {
-                        dto.setFingerprint(syncData.getFingerprint());
-                        dto.setPhotoBase64(syncData.getPhotoBase64());
-                        dto.setFid(syncData.getFid());
-                    }
-                    return dto;
-                })
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(dtoList, pageable, oaEmployeePage.getTotalElements());
+        // 执行查询
+        return oaEmployeeRepository.findAll(spec, pageable).map(oaEmployee -> {
+            OaEmployeeDto dto = convertToDto(oaEmployee);
+            EmployeeSyncQueue syncData = oaEmployee.getSyncQueue();
+            if (syncData != null) {
+                dto.setFingerprint(syncData.getFingerprint());
+                dto.setPhotoBase64(syncData.getPhotoBase64());
+            }
+            return dto;
+        });
     }
    /* @Transactional(readOnly = true) // 确保查询是只读的
     public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
