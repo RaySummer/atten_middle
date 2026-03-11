@@ -34,10 +34,10 @@ public class SecurityConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 禁用 Session
                 .and()
                 .authorizeRequests()
-                .antMatchers("/api/auth/login", "/error","/ping").permitAll() // 允许匿名访问
+                .antMatchers("/api/auth/login", "/error", "/ping").permitAll() // 允许匿名访问
                 // 允许匿名访问 Swagger 数据接口
                 .antMatchers("/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/v3/api-docs", "/webjars/**").permitAll()
-                .antMatchers("/iclock/**", "/api/download/**", "/api/card-template/**", "/api/oa-employees/push","/badge_print.html").permitAll() // 允许匿名访问
+                .antMatchers("/iclock/**", "/api/download/**", "/api/card-template/**", "/api/version/**", "/api/oa-employees/push", "/badge_print.html").permitAll() // 允许匿名访问
                 .antMatchers("/api/admin/**").hasRole("SUPER_ADMIN") // 限制只有超管能访问管理接口
                 .anyRequest().authenticated(); // 其他所有接口都需要登录
 
