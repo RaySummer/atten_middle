@@ -1,21 +1,14 @@
 package com.ray.atten.middle.module.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
-@Setter
-@Access(AccessType.FIELD)
 @Entity
 @Table(name = "device_commands")
+@Data
 public class DeviceCommand extends BaseEntity implements Serializable {
 
     // 目标设备序列号
