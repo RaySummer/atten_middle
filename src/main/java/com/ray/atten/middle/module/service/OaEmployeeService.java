@@ -75,25 +75,26 @@ public class OaEmployeeService {
                 predicates.add(cb.equal(root.get("inService"), request.getInService()));
             }
 
-            // C. 指纹/照片筛选
+            // C. 指纹筛选逻辑修正
             if (request.getHasFingerprint() != null) {
-                // 判定逻辑统一使用 coalesce 防止 NULL 导致过滤失效
-                Expression<Integer> len = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
-                predicates.add(request.getHasFingerprint() ? cb.greaterThan(len, 10) : cb.lessThanOrEqualTo(len, 10));
-            }
-            if (request.getHasPhoto() != null) {
-                Expression<Integer> len = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
-                predicates.add(request.getHasPhoto() ? cb.greaterThan(len, 10) : cb.lessThanOrEqualTo(len, 10));
+                // 统一处理逻辑：先 coalesce 转为空串，再算长度
+                Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
+
+                if (request.getHasFingerprint()) {
+                    predicates.add(cb.greaterThan(fpLen, 10));
+                } else {
+                    // 无指纹：长度 <= 10
+                    predicates.add(cb.lessThanOrEqualTo(fpLen, 10));
+                }
             }
 
-            // --- 排序逻辑 (仅在数据查询时注入) ---
+            // --- 排序逻辑 ---
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-
-                // 使用 coalesce 确保即使 syncJoin 关联不到数据，长度也会被当做 0 处理
+                // 依然使用 coalesce 确保 NULL 安全
                 Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
                 Expression<Integer> photoLen = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
 
-                // 只有 (指纹 < 10) 且 (照片 < 10) 才是优先级 0 (最优先)
+                // 严谨的 Priority 定义
                 Expression<Integer> priority = cb.selectCase()
                         .when(cb.and(cb.lessThan(fpLen, 10), cb.lessThan(photoLen, 10)), 0)
                         .otherwise(1)
