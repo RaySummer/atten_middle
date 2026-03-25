@@ -2,32 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>工牌打印预览</title>
+    <title>工牌打印预览 - 增强版</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* --- 1. 全局样式 --- */
-        body {
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 0;
-            font-family: "Microsoft YaHei", sans-serif;
-            color-scheme: light;
-        }
-
-        .no-print {
-            padding: 15px;
-            background: #333;
-            color: white;
-            text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            display: block;
-        }
+        /* --- 全局样式 --- */
+        body { background-color: #f0f0f0; margin: 0; padding: 0; font-family: "Microsoft YaHei", sans-serif; }
+        .no-print { padding: 15px; background: #333; color: white; text-align: center; position: sticky; top: 0; z-index: 999; }
+        .no-print button { padding: 5px 15px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 3px; }
 
         .badge-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--item-width, 230px), 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
             gap: 15px;
             padding: 20px;
             width: 210mm;
@@ -36,36 +21,20 @@
             min-height: 297mm;
         }
 
-        /* --- 2. 打印专用样式 --- */
+        /* --- 打印专用样式 --- */
         @media print {
-            @page {
-                size: A4;
-                margin: 0;
-            }
-
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-                image-rendering: -webkit-optimize-contrast;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            body {
-                background: white !important;
-            }
-
+            @page { size: A4; margin: 0; }
+            .no-print { display: none !important; }
+            body { background: white !important; }
             .badge-list {
                 width: 210mm;
-                grid-template-columns: repeat(var(--print-cols, 3), 1fr);
+                grid-template-columns: repeat(3, 1fr);
                 gap: 5px;
                 padding: 10mm;
                 margin: 0;
-                background: white !important;
             }
+            /* 强制浏览器渲染背景图和颜色 */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
     <style id="dynamic-template-css"></style>
@@ -73,13 +42,13 @@
 <body>
 
 <div class="no-print">
-    <label>选择尺寸：</label>
+    <label>工牌尺寸：</label>
     <select id="sizeSelector">
         <option value="small">小 (80%)</option>
         <option value="medium" selected>中 (100%)</option>
         <option value="large">大 (120%)</option>
     </select>
-    <button onclick="window.print()" style="margin-left: 15px; cursor: pointer;">直接打印</button>
+    <button onclick="window.print()">确认打印</button>
 </div>
 
 <div id="print-area" class="badge-list"></div>
@@ -87,117 +56,136 @@
 <script>
     let globalPayload = null;
 
-    // 智能处理图片源：自动补全前缀，自动过滤非法路径
-    function fixImageSource(str, fieldName) {
-        if (!str || typeof str !== 'string') return '';
+    /**
+     * 高级图片处理函数：识别多种指纹仪和相机生成的 Base64 格式
+     */
+    function smartProcessImage(rawStr) {
+        if (!rawStr || typeof rawStr !== 'string' || rawStr.length < 30) return '';
 
-        let val = str.trim();
+        let str = rawStr.trim();
 
-        // 1. 如果本身就是合法的路径或已带前缀的Base64，直接返回
-        if (val.startsWith('data:') || val.startsWith('http') || (val.startsWith('/') && val.length < 500)) {
-            return val;
+        // 1. 如果已经是完整的 DataURI 或 URL，直接返回
+        if (str.startsWith('data:image/') || str.startsWith('http')) return str;
+
+        // 2. 通过文件头特征码识别 MIME 类型 (Base64 编码后的特征)
+        // 取前 20 位进行特征匹配
+        const head = str.substring(0, 20);
+        let mime = 'png'; // 默认值
+
+        if (head.includes('Qk0')) {
+            mime = 'bmp';      // 指纹仪常见的 BMP 格式
+        } else if (head.includes('iVBOR')) {
+            mime = 'png';      // 标准 PNG
+        } else if (head.includes('/9j/')) {
+            mime = 'jpeg';     // 标准 JPG
+        } else if (head.includes('UklGR')) {
+            mime = 'webp';     // Google WebP
+        } else if (head.includes('R0lGOD')) {
+            mime = 'gif';      // GIF
+        } else if (head.includes('AAAAF')) {
+            mime = 'mp4';      // 误传的视频头
         }
 
-        // 2. 如果是纯 Base64 (比如你的 UklGR...)，则补全前缀
-        const head = val.charAt(0);
-        let mime = 'png';
-        switch (head) {
-            case '/':
-                mime = 'jpeg';
-                break;
-            case 'i':
-                mime = 'png';
-                break;
-            case 'R':
-                mime = 'gif';
-                break;
-            case 'U':
-                mime = 'webp';
-                break; // 匹配你的 WebP 数据
-            default:
-                mime = 'png';
-        }
+        return `data:image/${mime};base64,${str}`;
+    }
 
-        const result = `data:image/${mime};base64,${val}`;
-        return result;
+    /**
+     * 日期格式化
+     */
+    function formatDate(dateVal) {
+        if (!dateVal) return '';
+        const d = new Date(dateVal);
+        if (isNaN(d.getTime())) return dateVal;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
     $(document).ready(function () {
         const urlParams = new URLSearchParams(window.location.search);
         const ticket = urlParams.get('ticket');
 
+        if (!ticket) {
+            alert("未检测到打印凭证(Ticket)");
+            return;
+        }
+
         $.ajax({
             url: '/api/card-template/payload-by-ticket/' + ticket,
             type: 'GET',
-            success: function (response) {
-                if (response.status == "200" && response.content) {
-                    globalPayload = response.content;
+            success: function (res) {
+                if (res.status == "200" && res.content) {
+                    globalPayload = res.content;
                     renderWithCurrentSize();
+                } else {
+                    alert("加载数据失败: " + (res.message || "未知错误"));
                 }
+            },
+            error: function() {
+                alert("网络请求异常，无法获取打印数据");
             }
         });
+
         $('#sizeSelector').on('change', renderWithCurrentSize);
     });
 
+    /**
+     * 核心渲染函数
+     */
     function renderWithCurrentSize() {
         if (!globalPayload) return;
 
         const template = globalPayload.cardTemplate;
         const employees = globalPayload.employeeList || [];
         const sizeMode = $('#sizeSelector').val();
+        const container = $('#print-area');
 
-        // 1. 处理背景图
-        const finalBgUrl = fixImageSource(template.bgImageUrl || '');
+        container.empty();
+
+        // 1. 处理模板背景图逻辑
+        const finalBgUrl = smartProcessImage(template.bgImageUrl || '');
         if (template.cssContent) {
-            let finalCss = template.cssContent.replace(/\${BG_IMAGE_URL}/g, finalBgUrl);
+            // 全局替换 CSS 里的背景占位符
+            let finalCss = template.cssContent.replace(/\$\{BG_IMAGE_URL\}/g, finalBgUrl);
             $('#dynamic-template-css').text(finalCss);
         }
 
-        const container = $('#print-area');
-        container.empty();
-
-        employees.forEach((emp, index) => {
+        // 2. 遍历渲染每个员工
+        employees.forEach((emp) => {
             let html = template.htmlContent;
 
-            // --- 核心修改：智能替换循环 ---
+            // 预处理员工的所有属性
+            const processedEmp = {};
             Object.keys(emp).forEach(key => {
                 let val = emp[key];
 
-                // 如果这个值是长字符串（可能是Base64），或者是日期
                 if (typeof val === 'string') {
-                    val = val.trim();
-
-                    // 只要是以 UklGR (WebP) 等特征开头的纯 Base64，不看 key 是什么，直接补全
-                    if (!val.startsWith('data:') && !val.startsWith('http') && !val.startsWith('/')) {
-                        const head = val.substring(0, 5);
-                        if (head.includes('UklGR')) val = 'data:image/webp;base64,' + val;
-                        else if (head.includes('iVBOR')) val = 'data:image/png;base64,' + val;
-                        else if (head.includes('/9j/')) val = 'data:image/jpeg;base64,' + val;
-                        else if (val.length > 100) val = 'data:image/png;base64,' + val; // 兜底
+                    // 如果是疑似 Base64 图片 (根据长度和特征判断)
+                    if (val.length > 50 || key.toLowerCase().includes('photo') || key.toLowerCase().includes('fingerprint')) {
+                        processedEmp[key] = smartProcessImage(val);
+                    } else if (key.toLowerCase().includes('date')) {
+                        processedEmp[key] = formatDate(val);
+                    } else {
+                        processedEmp[key] = val;
                     }
+                } else {
+                    processedEmp[key] = val ?? '';
                 }
-
-                if (key.toLowerCase().includes('date')) {
-                    val = formatDate(val);
-                }
-
-                // 执行替换（不区分大小写）
-                const regex = new RegExp(`\\$\\{${key}\\}`, 'gi');
-                html = html.replace(regex, val ?? '');
             });
 
-            // 替换公共变量
-            html = html.replace(/\${BG_IMAGE_URL}/g, finalBgUrl);
-            html = html.replace(/\${SIZE_CLASS}/g, 'size-' + sizeMode);
+            // 执行 HTML 变量替换
+            // 使用正则替换所有 ${key}，不区分大小写
+            Object.keys(processedEmp).forEach(key => {
+                const regex = new RegExp(`\\$\\{${key}\\}`, 'gi');
+                html = html.replace(regex, processedEmp[key]);
+            });
+
+            // 替换公共环境变量
+            html = html.replace(/\$\{BG_IMAGE_URL\}/g, finalBgUrl);
+            html = html.replace(/\$\{SIZE_CLASS\}/g, 'size-' + sizeMode);
 
             container.append(html);
         });
-    }
 
-    function formatDate(dateVal) {
-        if (!dateVal) return '';
-        const d = new Date(dateVal);
-        return isNaN(d.getTime()) ? dateVal : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        console.log("渲染完成，共计 " + employees.length + " 张工牌");
     }
 </script>
 </body>
