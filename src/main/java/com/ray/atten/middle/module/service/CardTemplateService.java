@@ -2,6 +2,8 @@ package com.ray.atten.middle.module.service;
 
 import com.ray.atten.middle.module.dto.*;
 import com.ray.atten.middle.module.model.CardTemplate;
+import com.ray.atten.middle.module.model.EmployeeSyncQueue;
+import com.ray.atten.middle.module.model.OaEmployee;
 import com.ray.atten.middle.module.repository.CardTemplateRepository;
 import com.ray.atten.middle.module.repository.OaEmployeeRepository;
 import lombok.RequiredArgsConstructor;
@@ -107,20 +109,34 @@ public class CardTemplateService {
      * @return 打印页面所需的完整数据
      */
     public PrintPayloadDto getPrintPayload(UUID templateUuid, List<UUID> employeeUuids) {
-        // 1. 获取并转换模板 DTO
+        // 1. 获取模板
         CardTemplate template = repository.findByUuid(templateUuid)
                 .orElseThrow(() -> new RuntimeException("选中的模板不存在 (UUID: " + templateUuid + ")"));
-
         CardTemplateResponseDto templateDto = CardTemplateResponseDto.convertToDto(template);
 
-        // 2. 查询并按照传入的 UUID 顺序排序
-        // 注意：Repository 需要支持 findAllByUuidIn(List<UUID> uuids)
-        Map<UUID, OaEmployeeDto> employeeMap = oaEmployeeRepository.findAllByUuidIn(employeeUuids)
-                .stream()
-                .map(OaEmployeeDto::convertToDto)
+        // 2. 批量查询员工信息（注意：这里会自动关联查询 syncQueue）
+        // 如果想要性能更好，建议在 Repository 使用 Fetch Join 或者 EntityGraph
+        List<OaEmployee> employees = oaEmployeeRepository.findAllByUuidIn(employeeUuids);
+
+        // 3. 将员工数据转为 Map，Key 为 UUID，方便后续排序
+        Map<UUID, OaEmployeeDto> employeeMap = employees.stream()
+                .map(emp -> {
+                    // 转换基础信息 (PIN, Name, Dept 等)
+                    OaEmployeeDto dto = OaEmployeeDto.convertToDto(emp);
+
+                    // --- 核心修改：从 EmployeeSyncQueue 提取照片和指纹 ---
+                    if (emp.getSyncQueue() != null) {
+                        EmployeeSyncQueue sync = emp.getSyncQueue();
+
+                        // 将 sync 表中的照片赋值给 DTO
+                        // 确保你的 OaEmployeeDto 中有对应的字段 (例如 photoBase64)
+                        dto.setPhotoBase64(sync.getPhotoBase64());
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toMap(OaEmployeeDto::getUuid, emp -> emp));
 
-        // 按照传入的 employeeUuids 顺序提取，保证打印顺序
+        // 4. 按照传入的 UUID 顺序重排，保证打印顺序与勾选顺序一致
         List<OaEmployeeDto> employeeDtos = employeeUuids.stream()
                 .map(employeeMap::get)
                 .filter(Objects::nonNull)
