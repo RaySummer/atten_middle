@@ -53,12 +53,8 @@ public class OaEmployeeService {
         Pageable pageable = PageRequest.of(request.getPageNum() - 1, request.getPageSize());
 
         Specification<OaEmployee> spec = (root, query, cb) -> {
-            // 1. 必须使用 LEFT JOIN，确保即使 syncQueue 没记录，员工也能查出来
             Join<OaEmployee, EmployeeSyncQueue> syncJoin = root.join("syncQueue", JoinType.LEFT);
-
             List<Predicate> predicates = new ArrayList<>();
-
-            // --- 过滤逻辑 ---
 
             // A. 关键字 (PIN/Name)
             if (StringUtils.hasText(request.getKeyword())) {
@@ -69,31 +65,39 @@ public class OaEmployeeService {
                 ));
             }
 
-            // B. 在职状态 (关键点：只有不为 null 时才加条件，为 null 时查全部)
+            // B. 在职状态
             if (request.getInService() != null) {
                 predicates.add(cb.equal(root.get("inService"), request.getInService()));
             }
 
-            // C. 指纹筛选逻辑修正
+            // C. 指纹筛选逻辑
             if (request.getHasFingerprint() != null) {
-                // 统一处理逻辑：先 coalesce 转为空串，再算长度
                 Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
-
                 if (request.getHasFingerprint()) {
                     predicates.add(cb.greaterThan(fpLen, 10));
                 } else {
-                    // 无指纹：长度 <= 10
                     predicates.add(cb.lessThanOrEqualTo(fpLen, 10));
+                }
+            }
+
+            // D. 照片筛选逻辑 (新增修复部分)
+            // 假设 request 中有 getHasPhoto() 方法
+            if (request.getHasPhoto() != null) {
+                Expression<Integer> photoLen = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
+                if (request.getHasPhoto()) {
+                    // 已录入照片：长度 > 10
+                    predicates.add(cb.greaterThan(photoLen, 10));
+                } else {
+                    // 未录入照片：长度 <= 10
+                    predicates.add(cb.lessThanOrEqualTo(photoLen, 10));
                 }
             }
 
             // --- 排序逻辑 ---
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-                // 依然使用 coalesce 确保 NULL 安全
                 Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
                 Expression<Integer> photoLen = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
 
-                // 严谨的 Priority 定义
                 Expression<Integer> priority = cb.selectCase()
                         .when(cb.and(cb.lessThan(fpLen, 10), cb.lessThan(photoLen, 10)), 0)
                         .otherwise(1)
@@ -102,11 +106,9 @@ public class OaEmployeeService {
                 query.orderBy(cb.asc(priority), cb.desc(root.get("entryDate")));
             }
 
-            // 如果没有选任何条件，cb.and(...) 会生成一个 1=1 的条件
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        // 执行查询
         return oaEmployeeRepository.findAll(spec, pageable).map(oaEmployee -> {
             OaEmployeeDto dto = convertToDto(oaEmployee);
             EmployeeSyncQueue syncData = oaEmployee.getSyncQueue();
