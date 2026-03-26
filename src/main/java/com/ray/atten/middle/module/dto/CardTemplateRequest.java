@@ -18,6 +18,7 @@ public class CardTemplateRequest extends BaseDto implements Serializable {
     private String layout;
     private Integer baseWidth;
     private String bgImageUrl;
+    private String bgImageBase;
     @NotBlank
     private String htmlContent;
     private String cssContent;

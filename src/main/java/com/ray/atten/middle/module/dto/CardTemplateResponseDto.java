@@ -18,6 +18,7 @@ public class CardTemplateResponseDto extends BaseDto implements Serializable {
     private String layout;
     private Integer baseWidth;
     private String bgImageUrl;
+    private String bgImageBase;
     private String htmlContent;
     private String cssContent;
     private Boolean active;
@@ -33,6 +34,7 @@ public class CardTemplateResponseDto extends BaseDto implements Serializable {
         dto.setLayout(template.getLayout());
         dto.setBaseWidth(template.getBaseWidth());
         dto.setBgImageUrl(template.getBgImageUrl());
+        dto.setBgImageBase(template.getBgImageBase());
         dto.setHtmlContent(template.getHtmlContent());
         dto.setCssContent(template.getCssContent());
         dto.setActive(template.getActive());

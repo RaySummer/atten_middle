@@ -47,6 +47,9 @@ public class CardTemplate extends BaseEntity implements Serializable {
     @Column(name = "company_name")
     private String companyName;
 
+    @Column(columnDefinition = "TEXT")
+    private String bgImageBase;
+
     @Override
     protected void onCreate() {
         super.onCreate(); // 1. 先执行父类的 UUID 生成逻辑

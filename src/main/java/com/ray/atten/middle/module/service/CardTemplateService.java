@@ -52,6 +52,7 @@ public class CardTemplateService {
         template.setHtmlContent(request.getHtmlContent());
         template.setCssContent(request.getCssContent());
         template.setBgImageUrl(request.getBgImageUrl());
+        template.setBgImageBase(request.getBgImageBase());
         template.setActive(request.getActive() != null ? request.getActive() : true);
 
         // 业务逻辑：如果 baseWidth 为空，根据布局自动设定

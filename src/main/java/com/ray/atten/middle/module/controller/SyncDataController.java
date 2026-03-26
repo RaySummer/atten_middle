@@ -5,6 +5,7 @@ import com.ray.atten.middle.module.dto.EmployeeSyncRequest;
 import com.ray.atten.middle.module.dto.GlobalResponseBody;
 import com.ray.atten.middle.module.model.EmployeeSyncQueue;
 import com.ray.atten.middle.module.repository.EmployeeSyncQueueRepository;
+import com.ray.atten.middle.module.service.OaEmployeeService;
 import com.ray.atten.middle.module.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ public class SyncDataController {
 
     @Autowired
     private EmployeeSyncQueueRepository employeeSyncQueueRepository;
+
+    @Autowired
+    private OaEmployeeService oaEmployeeService;
 
     /**
      * 接收前端上传的员工数据，并推送到所有机器
@@ -68,6 +72,17 @@ public class SyncDataController {
         syncService.syncUserToDevices(syncQueues);
 
         return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "已保存指令到数据库，等待下次设备心跳时发送"));
+    }
+
+    @LogOperation("保存录入数据")
+    @PostMapping("/save-data-employee")
+    public ResponseEntity<GlobalResponseBody> saveDataEmployee(@RequestBody EmployeeSyncRequest request) {
+
+        if (request == null) {
+            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "保存失败"));
+        }
+        oaEmployeeService.saveSyncEmployeeData(request);
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "保存成功"));
     }
 
     @LogOperation("同步新数据")

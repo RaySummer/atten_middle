@@ -2,13 +2,35 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>工牌打印预览 - 增强版</title>
+    <title>工牌打印预览</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         /* --- 全局样式 --- */
-        body { background-color: #f0f0f0; margin: 0; padding: 0; font-family: "Microsoft YaHei", sans-serif; }
-        .no-print { padding: 15px; background: #333; color: white; text-align: center; position: sticky; top: 0; z-index: 999; }
-        .no-print button { padding: 5px 15px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 3px; }
+        body {
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .no-print {
+            padding: 15px;
+            background: #333;
+            color: white;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .no-print button {
+            padding: 5px 15px;
+            cursor: pointer;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
 
         .badge-list {
             display: grid;
@@ -23,9 +45,19 @@
 
         /* --- 打印专用样式 --- */
         @media print {
-            @page { size: A4; margin: 0; }
-            .no-print { display: none !important; }
-            body { background: white !important; }
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white !important;
+            }
+
             .badge-list {
                 width: 210mm;
                 grid-template-columns: repeat(3, 1fr);
@@ -33,8 +65,12 @@
                 padding: 10mm;
                 margin: 0;
             }
+
             /* 强制浏览器渲染背景图和颜色 */
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
     <style id="dynamic-template-css"></style>
@@ -119,7 +155,7 @@
                     alert("加载数据失败: " + (res.message || "未知错误"));
                 }
             },
-            error: function() {
+            error: function () {
                 alert("网络请求异常，无法获取打印数据");
             }
         });
@@ -138,50 +174,67 @@
         const sizeMode = $('#sizeSelector').val();
         const container = $('#print-area');
 
+        const isHorizontal = template.layout === 'horizontal';
+        const baseWidth = template.baseWidth || (isHorizontal ? 370 : 230);
+        const scale = {small: 0.8, medium: 1, large: 1.2}[sizeMode];
+        const finalWidth = baseWidth * scale;
+        const printCols = isHorizontal ? 2 : 3;
+
+        container.css({'--item-width': finalWidth + 'px', '--print-cols': printCols});
         container.empty();
 
-        // 1. 处理模板背景图逻辑
+        // 1. 处理模板背景图（底图）
+        // 这里的 finalBgUrl 是从模板配置里拿到的全局底图
         const finalBgUrl = smartProcessImage(template.bgImageUrl || '');
+
+        // 2. 注入动态 CSS
         if (template.cssContent) {
-            // 全局替换 CSS 里的背景占位符
-            let finalCss = template.cssContent.replace(/\$\{BG_IMAGE_URL\}/g, finalBgUrl);
+            // 这里替换 CSS 中的变量，确保样式表里的 url() 是有效的
+            let finalCss = template.cssContent.replace(/\$\{BG_IMAGE_URL\}/g, template.bgImageUrl || '');
             $('#dynamic-template-css').text(finalCss);
         }
 
-        // 2. 遍历渲染每个员工
+        // 3. 遍历渲染每个员工
         employees.forEach((emp) => {
+            // 💡 重点：每次循环都重新获取干净的 HTML 模板内容
             let html = template.htmlContent;
 
-            // 预处理员工的所有属性
-            const processedEmp = {};
+            // 预处理员工属性
+            const processedValues = {};
             Object.keys(emp).forEach(key => {
                 let val = emp[key];
-
                 if (typeof val === 'string') {
-                    // 如果是疑似 Base64 图片 (根据长度和特征判断)
+                    // 图片识别逻辑
                     if (val.length > 50 || key.toLowerCase().includes('photo') || key.toLowerCase().includes('fingerprint')) {
-                        processedEmp[key] = smartProcessImage(val);
+                        processedValues[key] = smartProcessImage(val);
                     } else if (key.toLowerCase().includes('date')) {
-                        processedEmp[key] = formatDate(val);
+                        processedValues[key] = formatDate(val);
                     } else {
-                        processedEmp[key] = val;
+                        processedValues[key] = val;
                     }
                 } else {
-                    processedEmp[key] = val ?? '';
+                    processedValues[key] = val ?? '';
                 }
             });
 
-            // 执行 HTML 变量替换
-            // 使用正则替换所有 ${key}，不区分大小写
-            Object.keys(processedEmp).forEach(key => {
+            // --- 开始执行替换 ---
+
+            // A. 先替换员工特定的数据 (如 ${name}, ${pin}, ${photoBase64})
+            Object.keys(processedValues).forEach(key => {
                 const regex = new RegExp(`\\$\\{${key}\\}`, 'gi');
-                html = html.replace(regex, processedEmp[key]);
+                html = html.replace(regex, processedValues[key]);
             });
 
-            // 替换公共环境变量
-            html = html.replace(/\$\{BG_IMAGE_URL\}/g, finalBgUrl);
-            html = html.replace(/\$\{SIZE_CLASS\}/g, 'size-' + sizeMode);
+            // B. 再替换每个工牌里的底图占位符 ${BG_IMAGE_URL}
+            // 确保每个工牌生成的 HTML 里，底图占位符都被正确替换成 base64 图片地址
+            const bgRegex = new RegExp(`\\$\\{BG_IMAGE_URL\\}`, 'g');
+            html = html.replace(bgRegex, finalBgUrl);
 
+            // C. 替换尺寸样式
+            console.log(template.bgImageUrl);
+            html = html.replace(/\$\{SIZE_CLASS\}/g, 'size-' + sizeMode);
+            html = html.replace(/\${BG_IMAGE_URL}/g, template.bgImageUrl || '');
+            // 将生成的工牌 HTML 加入容器
             container.append(html);
         });
 

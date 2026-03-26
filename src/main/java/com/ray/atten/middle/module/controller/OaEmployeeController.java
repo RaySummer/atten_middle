@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -57,6 +58,18 @@ public class OaEmployeeController {
 
         // 快速返回響應，不等待數據庫操作完成
         return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "推送数据成功，一共" + employees.size() + "条数据"));
+    }
+
+    /**
+     * 保存员工信息到推送列
+     * @param uuid
+     * @param employees
+     * @return
+     */
+    @PostMapping("/oa-employee/save/{uuid}")
+    public ResponseEntity<GlobalResponseBody> saveEmployeeSyncInfo(@PathVariable UUID uuid, @RequestBody OaEmployeeRequest employees) {
+        //todo
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", ""));
     }
 
     /**

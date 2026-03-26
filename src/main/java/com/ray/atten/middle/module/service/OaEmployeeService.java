@@ -1,9 +1,7 @@
 package com.ray.atten.middle.module.service;
 
 
-import com.ray.atten.middle.module.dto.OaEmployeeDto;
-import com.ray.atten.middle.module.dto.OaEmployeeQueryPageRequest;
-import com.ray.atten.middle.module.dto.OaEmployeeRequest;
+import com.ray.atten.middle.module.dto.*;
 import com.ray.atten.middle.module.model.EmployeeSyncQueue;
 import com.ray.atten.middle.module.model.OaEmployee;
 import com.ray.atten.middle.module.repository.EmployeeSyncQueueRepository;
@@ -12,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -118,104 +117,6 @@ public class OaEmployeeService {
             return dto;
         });
     }
-   /* @Transactional(readOnly = true) // 确保查询是只读的
-    public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
-
-        // --- 第 1 步: 执行主查询 (OaEmployee) ---
-
-        // 1. 處理排序邏輯 (保持不变)
-        Sort sort = createSort(request.getSortBy(), request.getSortOrder());
-
-        // 1. 構造分頁對象 (Pageable) (保持不变)
-        Pageable pageable = PageRequest.of(
-                request.getPageNum() - 1,
-                request.getPageSize(),
-                sort
-        );
-
-        // 2. 構造查詢規範 (Specification) (保持不变)
-        Specification<OaEmployee> spec = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            // A. 模糊查詢 (PIN 或 Name 模糊查詢)
-            if (StringUtils.hasText(request.getKeyword())) {
-                String likePattern = "%" + request.getKeyword() + "%";
-                Predicate keywordPredicate = criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("pin")), likePattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), likePattern)
-                );
-                predicates.add(keywordPredicate);
-            }
-
-            // D. 在職狀態查詢
-            if (request.getInService() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("inService"), request.getInService()));
-            }
-
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        };
-
-        // 3. 執行查詢並返回 Page<OaEmployee> 對象
-        Page<OaEmployee> oaEmployeePage = oaEmployeeRepository.findAll(spec, pageable);
-
-
-        // --- 第 2 步 & 第 3 步: 提取 PIN 并查询关联数据 ---
-
-        // 如果没有数据，直接返回空分页
-        if (oaEmployeePage.isEmpty()) {
-            return new PageImpl<>(
-                    new ArrayList<>(),
-                    pageable,
-                    0
-            );
-        }
-
-        // 提取当前页所有 OaEmployee 的 pin 列表
-        List<String> pins = oaEmployeePage.getContent().stream()
-                .map(OaEmployee::getPin)
-                .collect(Collectors.toList());
-
-        // 根据 pin 列表批量查询 EmployeeSyncQueue 数据
-        List<EmployeeSyncQueue> syncQueueList = employeeSyncQueueRepository.findByPinIn(pins);
-
-        // 将 EmployeeSyncQueue 列表转换为 Map<Pin, EmployeeSyncQueue>，便于快速查找
-        Map<String, EmployeeSyncQueue> syncQueueMap = syncQueueList.stream()
-                .collect(Collectors.toMap(EmployeeSyncQueue::getPin, sq -> sq));
-
-
-        // --- 第 4 步: 数据映射与组装 (OaEmployee -> OaEmployeeDto) ---
-
-        List<OaEmployeeDto> dtoList = oaEmployeePage.getContent().stream()
-                .map(oaEmployee -> {
-                    // 初始化 OaEmployeeDto，从 OaEmployee 复制基础字段
-                    OaEmployeeDto dto = convertToDto(oaEmployee);
-
-                    // 从 Map 中查找对应的 EmployeeSyncQueue 数据
-                    EmployeeSyncQueue syncData = syncQueueMap.get(oaEmployee.getPin());
-
-                    // 如果找到关联数据，则设置 DTO 中缺少的字段
-                    if (syncData != null) {
-                        dto.setFingerprint(syncData.getFingerprint());
-                        dto.setPhotoBase64(syncData.getPhotoBase64());
-                        dto.setFid(syncData.getFid()); // 假设 EmployeeSyncQueue 有对应的 getter
-                        dto.setFingerSize(syncData.getFingerSize());
-                        dto.setPhotoSize(syncData.getPhotoSize());
-                        // ... 其他字段
-                    }
-                    return dto;
-                })
-                .collect(Collectors.toList());
-
-
-        // --- 第 5 步: 构建新的 Page 对象并返回 ---
-
-        // 使用组装好的 DTO 列表、原始分页信息和总记录数构建 PageImpl
-        return new PageImpl<>(
-                dtoList,
-                pageable,
-                oaEmployeePage.getTotalElements() // 使用原始的总记录数
-        );
-    }*/
 
     // 辅助方法：将 OaEmployee 转换为 OaEmployeeDto（基础字段）
     private OaEmployeeDto convertToDto(OaEmployee oaEmployee) {
@@ -334,5 +235,36 @@ public class OaEmployeeService {
         return oaEmployeeRepository.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
+    @Transactional
+    public void saveSyncEmployeeData(EmployeeSyncRequest request) {
+        EmployeeSyncQueue syncQueue;
+        syncQueue = employeeSyncQueueRepository.findByPin(request.getPin());
+        if (syncQueue == null) {
+            syncQueue = new EmployeeSyncQueue();
+        }
+        syncQueue.setPin(request.getPin());
+        syncQueue.setName(request.getName());
+        syncQueue.setPri(request.getPri());
+        syncQueue.setFingerprint(request.getFingerprint());
+        syncQueue.setVerify(request.getVerify());
+        syncQueue.setValid(request.getValid());
+        syncQueue.setFid(request.getFid());
+        syncQueue.setTargetDeviceSn(request.getDeviceSn());
+        syncQueue.setPhotoBase64(request.getPhotoBase64());
+        syncQueue.setFingerSize(request.getFingerSize());
+        syncQueue.setPhotoSize(request.getPhotoSize());
+        syncQueue.setPasswd(request.getPasswd());
+        syncQueue.setStatus(0);
+
+        Optional<OaEmployee> optional = oaEmployeeRepository.findByPin(request.getPin());
+        if (optional.isPresent()) {
+            OaEmployee oaEmployee = optional.get();
+            oaEmployee.setAvatar(request.getPhotoBase64());
+
+            oaEmployeeRepository.save(oaEmployee);
+        }
+
+        employeeSyncQueueRepository.save(syncQueue);
+    }
 
 }
