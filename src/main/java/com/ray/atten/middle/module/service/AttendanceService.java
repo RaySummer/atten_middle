@@ -4,6 +4,7 @@ import com.ray.atten.middle.module.dto.AttendanceLogDto;
 import com.ray.atten.middle.module.dto.AttendanceLogRequest;
 import com.ray.atten.middle.module.model.AttendanceLog;
 import com.ray.atten.middle.module.repository.AttendanceLogRepository;
+import com.ray.atten.middle.module.utils.AttendanceMqSender;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -34,6 +37,8 @@ public class AttendanceService {
 
     @Autowired
     private AttendanceLogRepository logRepo;
+    @Autowired
+    private AttendanceMqSender mqSender;
 
     @Transactional
     public List<AttendanceLog> processAttLogData(String sn, String bodyData) {
@@ -71,7 +76,16 @@ public class AttendanceService {
                     log.debug("Saved AttLog: " + attendanceLog.getUserPin() + " " + attendanceLog.getVerifyTime());
                 }
                 log.debug("This AttLog Exists " + attendanceLog.getUserPin() + " " + attendanceLog.getVerifyTime());
+
+                // 在接收到推送的方法内：
+                Map<String, Object> data = new HashMap<>();
+                data.put("empid", attendanceLog.getUserPin());
+                data.put("dktime", attendanceLog.getVerifyTime());
+                data.put("clocksno", attendanceLog.getDeviceSn());
+
+                mqSender.sendSyncMessage(data);
             }
+
         }
 
         return logs;
