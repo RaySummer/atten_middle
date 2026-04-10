@@ -38,7 +38,6 @@ public class CardTemplateService {
     @Transactional
     public CardTemplateResponseDto saveTemplate(CardTemplateRequest request) {
         CardTemplate template;
-        // 改为根据 UUID 判断更新还是新增
         if (request.getUuid() != null) {
             template = repository.findByUuid(request.getUuid())
                     .orElseThrow(() -> new RuntimeException("模板不存在"));
@@ -55,7 +54,15 @@ public class CardTemplateService {
         template.setBgImageBase(request.getBgImageBase());
         template.setActive(request.getActive() != null ? request.getActive() : true);
 
-        // 业务逻辑：如果 baseWidth 为空，根据布局自动设定
+        // --- 核心修改：处理多公司关联 ---
+        // 假设 request.getCompanyNames() 返回的是 List<String>
+        if (request.getCompanyNames() != null) {
+            // 注意：JPA 的 ElementCollection 建议先 clear 再 addAll，或者直接设置新集合
+            // 如果使用直接设置，确保实体类中有相应的 Setter
+            template.getCompanyNames().clear();
+            template.getCompanyNames().addAll(request.getCompanyNames());
+        }
+
         if (request.getBaseWidth() == null || request.getBaseWidth() <= 0) {
             template.setBaseWidth("horizontal".equalsIgnoreCase(request.getLayout()) ? 370 : 230);
         } else {

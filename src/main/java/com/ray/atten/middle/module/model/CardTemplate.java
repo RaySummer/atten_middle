@@ -12,6 +12,8 @@ import org.hibernate.annotations.ParamDef;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,47 +22,57 @@ import java.time.LocalDateTime;
 @Access(AccessType.FIELD)
 @Entity
 @Table(name = "card_template")
-// 定义过滤器：名称为 companyFilter，接受一个名为 names 的字符串列表参数
-@FilterDef(name = SecurityConstants.COMPANY_FILTER_NAME, parameters = @ParamDef(name = SecurityConstants.COMPANY_PARAM_NAME, type = "string"))
-// 定义过滤逻辑：要求字段 company_name 在参数列表 :names 中
-@Filter(name = SecurityConstants.COMPANY_FILTER_NAME, condition = "company_name IN (:" + SecurityConstants.COMPANY_PARAM_NAME + ")")
+// 1. 定义过滤器参数
+@FilterDef(
+        name = SecurityConstants.COMPANY_FILTER_NAME,
+        parameters = @ParamDef(name = SecurityConstants.COMPANY_PARAM_NAME, type = "string")
+)
+@Filter(
+        name = SecurityConstants.COMPANY_FILTER_NAME,
+        condition = "id IN (SELECT tc.template_id FROM card_template_companies tc WHERE tc.company_name IN (:" + SecurityConstants.COMPANY_PARAM_NAME + "))"
+)
 public class CardTemplate extends BaseEntity implements Serializable {
 
     @Column(unique = true, nullable = false)
     private String name;
 
-    private String description; // 模板描述
+    private String description;
 
-    private String layout; // 布局类型: vertical (竖版), horizontal (横版)
+    private String layout;
 
-    private Integer baseWidth; // 基准宽度 (px)，用于前端计算 Grid 排版
+    private Integer baseWidth;
 
-    private String bgImageUrl; // 背景图 URL 或服务器相对路径
+    private String bgImageUrl;
 
     @Column(columnDefinition = "TEXT")
     private String htmlContent;
+
     @Column(columnDefinition = "TEXT")
     private String cssContent;
-
-    // 是否激活
-    private Boolean active = Boolean.TRUE;
-    @Column(name = "company_name")
-    private String companyName;
 
     @Column(columnDefinition = "TEXT")
     private String bgImageBase;
 
+    private Boolean active = Boolean.TRUE;
+
+    // --- 核心关联配置 ---
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "card_template_companies",
+            joinColumns = @JoinColumn(name = "template_id") // 对应子查询中的 template_id
+    )
+    @Column(name = "company_name") // 对应子查询中的 company_name
+    private Set<String> companyNames = new HashSet<>();
+
     @Override
     protected void onCreate() {
-        super.onCreate(); // 1. 先执行父类的 UUID 生成逻辑
-        if (baseWidth == null || baseWidth > 1) {
-            if (layout.equalsIgnoreCase("vertical")) {
+        super.onCreate();
+        if (baseWidth == null || baseWidth <= 1) { // 修正判断逻辑
+            if ("vertical".equalsIgnoreCase(layout)) {
                 this.baseWidth = 370;
-            }
-            if (layout.equalsIgnoreCase("horizontal")) {
+            } else if ("horizontal".equalsIgnoreCase(layout)) {
                 this.baseWidth = 230;
             }
         }
     }
-
 }
