@@ -74,16 +74,20 @@ public class AttendanceService {
                     logRepo.save(attendanceLog);
                     logs.add(attendanceLog);
                     log.debug("Saved AttLog: " + attendanceLog.getUserPin() + " " + attendanceLog.getVerifyTime());
+
+                    try {
+                        // 在接收到推送的方法内：
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("empid", attendanceLog.getUserPin());
+                        data.put("dktime", attendanceLog.getVerifyTime());
+                        data.put("clocksno", attendanceLog.getDeviceSn());
+
+                        mqSender.sendSyncMessage(data);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
                 log.debug("This AttLog Exists " + attendanceLog.getUserPin() + " " + attendanceLog.getVerifyTime());
-
-                // 在接收到推送的方法内：
-                Map<String, Object> data = new HashMap<>();
-                data.put("empid", attendanceLog.getUserPin());
-                data.put("dktime", attendanceLog.getVerifyTime());
-                data.put("clocksno", attendanceLog.getDeviceSn());
-
-                mqSender.sendSyncMessage(data);
             }
 
         }

@@ -21,7 +21,7 @@ public class AttendanceMqSender {
      */
     public void sendSyncMessage(Map<String, Object> recordMap) {
         try {
-            log.info("准备发送打卡记录到队列: PIN={}", recordMap.get("pin"));
+            log.info("准备发送打卡记录到队列: empid={}", recordMap.get("empid"));
 
             // 发送到指定的交换机和路由键
             rabbitTemplate.convertAndSend(
