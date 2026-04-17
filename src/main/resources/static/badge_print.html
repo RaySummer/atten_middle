@@ -174,11 +174,13 @@
         const container = $('#print-area');
 
         const isHorizontal = template.layout === 'horizontal';
+        console.log(isHorizontal)
         const baseWidth = template.baseWidth || (isHorizontal ? 370 : 230);
         const scale = {small: 0.8, medium: 1, large: 1.2}[sizeMode];
         const finalWidth = baseWidth * scale;
-        const printCols = isHorizontal ? 2 : 3;
+        const printCols = isHorizontal ? 3 : 2;
 
+        console.log(printCols)
         container.css({'--item-width': finalWidth + 'px', '--print-cols': printCols});
         container.empty();
 
