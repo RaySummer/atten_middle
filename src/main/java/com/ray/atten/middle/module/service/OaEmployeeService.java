@@ -8,6 +8,7 @@ import com.ray.atten.middle.module.repository.EmployeeSyncQueueRepository;
 import com.ray.atten.middle.module.repository.OaEmployeeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,9 @@ import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +35,9 @@ public class OaEmployeeService {
     private OaEmployeeRepository oaEmployeeRepository;
     @Autowired
     private EmployeeSyncQueueRepository employeeSyncQueueRepository;
+
+    @Value("${employee.avater.photo}")
+    private String folderPath;
 
     // 定義允許排序的字段列表（與實體類的屬性名稱一致）
     private static final Set<String> ALLOWED_SORT_FIELDS = new HashSet<>(Arrays.asList(
@@ -267,6 +274,63 @@ public class OaEmployeeService {
         }
 
         employeeSyncQueueRepository.save(syncQueue);
+    }
+
+    /**
+     * 批量从文件夹更新员工头像
+     *
+     * @param
+     */
+    @Transactional
+    public void batchUpdatePhotosFromFolder() {
+        File folder = new File(folderPath);
+        if (!folder.exists() || !folder.isDirectory()) {
+            log.error("指定的路径不是有效的文件夹: {}", folderPath);
+            return;
+        }
+
+        File[] files = folder.listFiles((dir, name) -> {
+            String lowerName = name.toLowerCase();
+            return lowerName.endsWith(".jpg") || lowerName.endsWith(".png") || lowerName.endsWith(".jpeg");
+        });
+
+        if (files == null || files.length == 0) {
+            log.warn("文件夹中未找到图片文件: {}", folderPath);
+            return;
+        }
+
+        int successCount = 0;
+        for (File file : files) {
+            try {
+                // 1. 获取文件名（不带后缀）作为 PIN
+                String fileName = file.getName();
+                String pin = fileName.substring(0, fileName.lastIndexOf("."));
+
+                // 2. 根据 PIN 查询员工
+                Optional<OaEmployee> employeeOpt = oaEmployeeRepository.findByPin(pin);
+
+                if (employeeOpt.isPresent()) {
+                    OaEmployee employee = employeeOpt.get();
+
+                    // 3. 读取图片并转换为 Base64
+                    byte[] fileContent = Files.readAllBytes(file.toPath());
+                    String base64Image = Base64.getEncoder().encodeToString(fileContent);
+
+                    // 假设头像存在 avatar 字段中（根据你的实体类定义）
+                    // 如果 SDK 需要 DataURI 格式，可以加上: "data:image/jpeg;base64,"
+                    employee.setAvatar(base64Image);
+
+                    oaEmployeeRepository.save(employee);
+                    successCount++;
+                    log.info("成功更新员工照片: PIN = {}, 文件名 = {}", pin, fileName);
+                } else {
+                    log.warn("未找到对应员工: PIN = {}, 文件名 = {}", pin, fileName);
+                }
+            } catch (IOException e) {
+                log.error("处理文件失败: {}, 错误: {}", file.getName(), e.getMessage());
+            }
+        }
+        log.info("批量任务完成，成功更新 {} 名员工的照片。", successCount);
     }
 
 }

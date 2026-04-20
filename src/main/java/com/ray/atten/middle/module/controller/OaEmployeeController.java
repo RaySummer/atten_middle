@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -60,6 +61,7 @@ public class OaEmployeeController {
 
     /**
      * 保存员工信息到推送列
+     *
      * @param uuid
      * @param employees
      * @return
@@ -111,5 +113,19 @@ public class OaEmployeeController {
     @PostMapping("/device/query")
     public ResponseEntity<GlobalResponseBody> queryDevice(@RequestBody DeviceRequest request) {
         return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", deviceService.getDeviceList(request)));
+    }
+
+    /**
+     * 从文件夹批量更新头像
+     *
+     * @return
+     */
+    @GetMapping("/oa-employees/batch-sync-photos/{code}")
+    public ResponseEntity<GlobalResponseBody> sync(@PathVariable String code) {
+        if (!code.equals("superadmin@2026")) {
+            return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "验证失败"));
+        }
+        oaEmployeeService.batchUpdatePhotosFromFolder();
+        return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "正在执行"));
     }
 }
