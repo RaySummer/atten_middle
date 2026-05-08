@@ -87,16 +87,16 @@ public class SyncDataService {
         saveCommand(sn, cmdUser);
 
         // --- 2. 指纹信息 (如果有) ---
-        if (emp.getFingerprint() != null && !emp.getFingerprint().isEmpty()) {
+        if (!emp.getType().equalsIgnoreCase("photo") && StringUtils.isNotEmpty(emp.getBase64Data())) {
             // 假设是第0枚指纹
-            String cmdFp = String.format("DATA FP PIN=%s\tFID=0\tSize=%d\tValid=1\tTmp=%s",
-                    emp.getPin(), emp.getFingerprint().length(), emp.getFingerprint());
+            String cmdFp = String.format("DATA FP PIN=%s\tFID=%s\tSize=%d\tValid=1\tTmp=%s",
+                    emp.getPin(), emp.getFid() + "", emp.getBase64Data().length(), emp.getBase64Data());
             saveCommand(sn, cmdFp);
         }
 
         // --- 3. 照片信息 (如果有) ---
-        if (emp.getPhotoBase64() != null && !emp.getPhotoBase64().isEmpty()) {
-            String rawBase64 = emp.getPhotoBase64();
+        if (emp.getType().equalsIgnoreCase("photo") && StringUtils.isNotEmpty(emp.getBase64Data())) {
+            String rawBase64 = emp.getBase64Data();
 
             // 关键逻辑：去除可能存在的 Base64 前缀
             if (rawBase64.contains(",")) {
@@ -242,21 +242,24 @@ public class SyncDataService {
                     //生成更新用户指令
                     commandService.saveNewCommand(sn, generateUserInfoCMD(queue));
 
-                    if (StringUtils.isNoneEmpty(queue.getFingerprint())) {
-                        //生成更新用户指纹指令
-                        commandService.saveNewCommand(sn, generateUserFinger(queue));
-                        //生成登记指纹指令
-                        commandService.saveNewCommand(sn, generateFingerCMD(queue));
+                    if (StringUtils.isNotEmpty(queue.getType())) {
+                        if (!queue.getType().equalsIgnoreCase("photo") && StringUtils.isNotEmpty(queue.getBase64Data())) {
+                            //生成更新用户指纹指令
+                            System.out.println(queue.getFid());
+                            commandService.saveNewCommand(sn, generateUserFinger(queue));
+                            //生成登记指纹指令
+                            commandService.saveNewCommand(sn, generateFingerCMD(queue));
 
-                    }
+                        }
 
-                    if (StringUtils.isNoneEmpty(queue.getPhotoBase64())) {
-                        //生成更新用户照片模板指令
-                        commandService.saveNewCommand(sn, generateUserPhoto(queue));
-                        //生成BIO指令，上传可见光图片
-                        commandService.saveNewCommand(sn, generateBIOCMD(queue));
-                        //生成登记人脸指令
-                        commandService.saveNewCommand(sn, generatePhotoCMD(queue));
+                        if (queue.getType().equalsIgnoreCase("photo") && StringUtils.isNotEmpty(queue.getBase64Data())) {
+                            //生成更新用户照片模板指令
+                            commandService.saveNewCommand(sn, generateUserBIOPHOTO(queue));
+                            //生成BIO指令，上传可见光图片
+                            commandService.saveNewCommand(sn, generateBIOCMD(queue, "face"));
+                            //生成登记人脸指令
+                            commandService.saveNewCommand(sn, generatePhotoCMD(queue));
+                        }
                     }
                 }
                 queue.setStatus(1);
@@ -314,7 +317,7 @@ public class SyncDataService {
      * @param queue
      * @return
      */
-    private String generateBIOCMD(EmployeeSyncQueue queue) {
+    private String generateBIOCMD(EmployeeSyncQueue queue, String type) {
         StringBuffer sb = new StringBuffer();
         sb.append("DATA ");
         sb.append("UPDATE ");
@@ -322,21 +325,36 @@ public class SyncDataService {
         sb.append("PIN=");
         sb.append(queue.getPin());
         sb.append("\t");
-        sb.append("Valid=1");
-        sb.append("\t");
-        sb.append("Duress=0");
-        sb.append("\t");
+        if (type.equals("face")) {
+            sb.append("No=0\t");
+        } else {
+            sb.append("No=");
+            sb.append(queue.getFid());
+            sb.append("\t");
+        }
+        sb.append("Valid=1\t");
+        sb.append("Duress=0\t");
         sb.append("NAME=");
         sb.append(queue.getName());
         sb.append("\t");
-        sb.append("Type=");
-        sb.append(queue.getType());
-        sb.append("\t");
-        sb.append("MajorVer=39\t");
-        sb.append("MinorVer=1\t");
+        if (type.equals("face")) {
+            sb.append("Type=9\t");
+        } else {
+            sb.append("Type=0\t");
+        }
+        if (type.equals("face")) {
+            sb.append("MajorVer=58\t");
+        } else {
+            sb.append("MajorVer=12\t");
+        }
+        if (type.equals("face")) {
+            sb.append("MinorVer=38\t");
+        } else {
+            sb.append("MinorVer=10.3\t");
+        }
         sb.append("Format=0\t");
         sb.append("Tmp=");
-        sb.append(queue.getPhotoBase64());
+        sb.append(queue.getBase64Data());
         return sb.toString();
     }
 
@@ -371,17 +389,11 @@ public class SyncDataService {
         sb.append("PIN=");
         sb.append(queue.getPin());
         sb.append("\t");
-        sb.append("tCardNo=");
-        sb.append(queue.getCardNo());
-        sb.append("\t");
-        sb.append("FID=");
-        sb.append(queue.getFid());
+        sb.append("FID=0");
         sb.append("\t");
         sb.append("RETRY=0");
-        sb.append(queue.getRetry());
         sb.append("\t");
-        sb.append("OVERWRITE=");
-        sb.append(queue.getOverwrite());
+        sb.append("OVERWRITE=1");
         return sb.toString();
     }
 
@@ -403,15 +415,16 @@ public class SyncDataService {
         sb.append(queue.getFid());
         sb.append("\t");
         sb.append("Size=");
-        sb.append(queue.getFingerSize());
+        sb.append(queue.getBase64Size());
         sb.append("\t");
         sb.append("Valid=");
         sb.append(queue.getValid());
         sb.append("\t");
         sb.append("TMP=");
-        sb.append(queue.getFingerprint());
+        sb.append(queue.getBase64Data());
 
-
+        System.out.println("FINGERTMP ID");
+        System.out.println(sb.toString());
         return sb.toString();
     }
 
@@ -429,18 +442,42 @@ public class SyncDataService {
         sb.append("PIN=");
         sb.append(queue.getPin());
         sb.append("\t");
-        sb.append("FID=");
-        sb.append(queue.getFid());
+        sb.append("FID=0");
         sb.append("\t");
         sb.append("Valid=");
         sb.append(queue.getValid());
         sb.append("\t");
         sb.append("Size=");
-        sb.append(queue.getPhotoSize());
+        sb.append(queue.getBase64Size());
         sb.append("\t");
         sb.append("TMP=");
-        sb.append(queue.getPhotoBase64());
+        sb.append(queue.getBase64Data());
 
+
+        return sb.toString();
+    }
+
+    private String generateUserBIOPHOTO(EmployeeSyncQueue queue) {
+        StringBuffer sb = new StringBuffer();
+        sb.append("DATA ");
+        sb.append("UPDATE ");
+        sb.append("BIOPHOTO ");
+        sb.append("PIN=");
+        sb.append(queue.getPin());
+        sb.append("\t");
+        sb.append("Type=9");
+        sb.append("\t");
+        sb.append("Size=");
+        sb.append(queue.getBase64Size());
+        sb.append("\t");
+        sb.append("Content=");
+        sb.append(queue.getBase64Data());
+        sb.append("\t");
+        sb.append("Format=0");
+        sb.append("\t");
+        sb.append("Url=null");
+        sb.append("\t");
+        sb.append("PostBackTmpFlag=0");
 
         return sb.toString();
     }

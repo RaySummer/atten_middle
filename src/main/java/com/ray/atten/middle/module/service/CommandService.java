@@ -36,6 +36,9 @@ public class CommandService {
     public void saveNewCommand(String deviceSn, String commandContent) {
         DeviceCommand command = new DeviceCommand();
         command.setDeviceSn(deviceSn);
+        System.out.println("---------------------");
+        System.out.println(commandContent);
+        System.out.println("---------------------");
         command.setCommandContent(commandContent);
         command.setStatus(STATUS_PENDING);
         commandRepository.save(command);
@@ -127,4 +130,66 @@ public class CommandService {
         commandRepository.save(command);
     }
 
+    @Transactional
+    public void processCommandCallback(String deviceSn, String backMsg) {
+
+        if (StringUtils.isEmpty(backMsg)) {
+            return;
+        }
+        String returnCode = "";
+        String cmdContent = "";
+        String cmdId = "";
+        String[] params = backMsg.split("&");
+        for (String param : params) {
+            String[] keyValue = param.split("=");
+            if (keyValue.length == 2) {
+                String key = keyValue[0].trim();
+                String value = keyValue[1].trim();
+
+                if (key.equalsIgnoreCase("Return")) {
+                    returnCode = value;
+                } else if (key.equalsIgnoreCase("CMD")) {
+                    cmdContent = value;
+                } else if (key.equalsIgnoreCase("ID")) {
+                    cmdId = value;
+                }
+
+            }
+        }
+        // 1. 提取指令的实际内容 (去除 'C:' 前缀)
+        String actualContent = StringUtils.isNotEmpty(cmdContent) && cmdContent.startsWith("C:")
+                ? cmdContent.substring(2)
+                : cmdContent;
+
+        if (StringUtils.isEmpty(actualContent)) {
+            log.error("Callback Error: Missing command content from " + deviceSn);
+            return;
+        }
+
+        if (StringUtils.isEmpty(cmdId)) {
+            log.error("Callback Error: Missing cmdID from " + cmdId);
+            return;
+        }
+
+        Optional<DeviceCommand> deviceCommand = commandRepository.findById(Long.valueOf(cmdId));
+
+        //处理查找到的最新的指令
+        DeviceCommand command = deviceCommand.get();
+        Integer newStatus;
+
+        if ("0".equals(returnCode)) {
+            // Return=0 表示成功执行
+            newStatus = STATUS_EXECUTED;
+            command.setStatus(newStatus);
+            log.debug("Command Success: " + command.getCommandContent() + " executed on " + deviceSn);
+        } else {
+            // 其他返回码表示失败
+            newStatus = STATUS_FAILED;
+            command.setStatus(Integer.valueOf(returnCode));
+            log.error("Command FAILED (" + returnCode + "): " + command.getCommandContent() + " on " + deviceSn);
+        }
+
+        // 4. 更新指令状态
+        commandRepository.save(command);
+    }
 }

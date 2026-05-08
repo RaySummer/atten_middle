@@ -7,20 +7,19 @@ import com.ray.atten.middle.module.model.OaEmployee;
 import com.ray.atten.middle.module.repository.EmployeeSyncQueueRepository;
 import com.ray.atten.middle.module.repository.OaEmployeeRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.JoinType;
-import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,6 +34,9 @@ public class OaEmployeeService {
     private OaEmployeeRepository oaEmployeeRepository;
     @Autowired
     private EmployeeSyncQueueRepository employeeSyncQueueRepository;
+
+    @Autowired
+    private SyncDataService syncService;
 
     @Value("${employee.avater.photo}")
     private String folderPath;
@@ -56,97 +58,93 @@ public class OaEmployeeService {
      */
     @Transactional(readOnly = true)
     public Page<OaEmployeeDto> queryEmployees(OaEmployeeQueryPageRequest request) {
-
         Pageable pageable = PageRequest.of(request.getPageNum() - 1, request.getPageSize());
 
         Specification<OaEmployee> spec = (root, query, cb) -> {
+            // 1. 核心修复：左连接 syncQueue，这样我们可以直接计算权重列
             Join<OaEmployee, EmployeeSyncQueue> syncJoin = root.join("syncQueue", JoinType.LEFT);
+
             List<Predicate> predicates = new ArrayList<>();
 
-            // A. 关键字 (PIN/Name)
-            if (StringUtils.hasText(request.getKeyword())) {
+            // --- 基础筛选逻辑 ---
+            if (StringUtils.isNotEmpty(request.getKeyword())) {
                 String likePattern = "%" + request.getKeyword().toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("pin")), likePattern),
                         cb.like(cb.lower(root.get("name")), likePattern)
                 ));
             }
-
-            // B. 在职状态
             if (request.getInService() != null) {
                 predicates.add(cb.equal(root.get("inService"), request.getInService()));
             }
 
-            // C. 指纹筛选逻辑
-            if (request.getHasFingerprint() != null) {
-                Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
-                if (request.getHasFingerprint()) {
-                    predicates.add(cb.greaterThan(fpLen, 10));
-                } else {
-                    predicates.add(cb.lessThanOrEqualTo(fpLen, 10));
-                }
-            }
-
-            // D. 照片筛选逻辑 (新增修复部分)
-            // 假设 request 中有 getHasPhoto() 方法
-            if (request.getHasPhoto() != null) {
-                Expression<Integer> photoLen = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
-                if (request.getHasPhoto()) {
-                    // 已录入照片：长度 > 10
-                    predicates.add(cb.greaterThan(photoLen, 10));
-                } else {
-                    // 未录入照片：长度 <= 10
-                    predicates.add(cb.lessThanOrEqualTo(photoLen, 10));
-                }
-            }
-
-            // --- 排序逻辑 ---
+            // --- 排序逻辑 (关键点) ---
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
-                Expression<Integer> fpLen = cb.length(cb.coalesce(syncJoin.get("fingerprint"), ""));
-                Expression<Integer> photoLen = cb.length(cb.coalesce(syncJoin.get("photoBase64"), ""));
 
-                Expression<Integer> priority = cb.selectCase()
-                        .when(cb.and(cb.lessThan(fpLen, 10), cb.lessThan(photoLen, 10)), 0)
-                        .otherwise(1)
-                        .as(Integer.class);
+                // 定义指纹和照片的单行权重
+                // 只要这一行是 finger 且长度够，设为 1，否则 0
+                Expression<Integer> fingerPoint = cb.selectCase()
+                        .when(cb.and(
+                                cb.equal(syncJoin.get("type"), "finger"),
+                                cb.isNotNull(syncJoin.get("base64Data")),
+                                cb.greaterThan(cb.length(syncJoin.get("base64Data")), 10)
+                        ), 1).otherwise(0).as(Integer.class);
 
-                query.orderBy(cb.asc(priority), cb.desc(root.get("entryDate")));
+                Expression<Integer> photoPoint = cb.selectCase()
+                        .when(cb.and(
+                                cb.equal(syncJoin.get("type"), "photo"),
+                                cb.isNotNull(syncJoin.get("base64Data")),
+                                cb.greaterThan(cb.length(syncJoin.get("base64Data")), 10)
+                        ), 1).otherwise(0).as(Integer.class);
+
+                // 关键：必须分组，否则 Join 会导致数据重复
+                query.groupBy(root.get("id"));
+
+                // 排序：使用 max 聚合。如果员工有任何一条指纹记录，max 就是 1
+                // ASC 排序：0（未录入）排在 1（已录入）前面
+                query.orderBy(
+                        cb.asc(cb.max(fingerPoint)),
+                        cb.asc(cb.max(photoPoint)),
+                        cb.desc(root.get("entryDate"))
+                );
+            }
+
+            // --- 过滤逻辑 (使用原始 Subquery 确保准确性) ---
+            if (request.getHasFingerprint() != null) {
+                Subquery<Integer> fpSub = query.subquery(Integer.class);
+                Root<EmployeeSyncQueue> fpRoot = fpSub.from(EmployeeSyncQueue.class);
+                fpSub.select(cb.literal(1)).where(
+                        cb.equal(fpRoot.get("pin"), root.get("pin")),
+                        cb.equal(fpRoot.get("type"), "finger"),
+                        cb.isNotNull(fpRoot.get("base64Data")),
+                        cb.greaterThan(cb.length(fpRoot.get("base64Data")), 10)
+                );
+                predicates.add(request.getHasFingerprint() ? cb.exists(fpSub) : cb.not(cb.exists(fpSub)));
+            }
+
+            if (request.getHasPhoto() != null) {
+                Subquery<Integer> phSub = query.subquery(Integer.class);
+                Root<EmployeeSyncQueue> phRoot = phSub.from(EmployeeSyncQueue.class);
+                phSub.select(cb.literal(1)).where(
+                        cb.equal(phRoot.get("pin"), root.get("pin")),
+                        cb.equal(phRoot.get("type"), "photo"),
+                        cb.isNotNull(phRoot.get("base64Data")),
+                        cb.greaterThan(cb.length(phRoot.get("base64Data")), 10)
+                );
+                predicates.add(request.getHasPhoto() ? cb.exists(phSub) : cb.not(cb.exists(phSub)));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        return oaEmployeeRepository.findAll(spec, pageable).map(oaEmployee -> {
-            OaEmployeeDto dto = convertToDto(oaEmployee);
-            EmployeeSyncQueue syncData = oaEmployee.getSyncQueue();
-            if (syncData != null) {
-                dto.setFingerprint(syncData.getFingerprint());
-                dto.setPhotoBase64(syncData.getPhotoBase64());
-            }
-            return dto;
-        });
-    }
-
-    // 辅助方法：将 OaEmployee 转换为 OaEmployeeDto（基础字段）
-    private OaEmployeeDto convertToDto(OaEmployee oaEmployee) {
-        OaEmployeeDto dto = new OaEmployeeDto();
-        dto.setUuid(oaEmployee.getUuid());
-        dto.setPin(oaEmployee.getPin());
-        dto.setName(oaEmployee.getName());
-        dto.setCompany(oaEmployee.getCompany());
-        dto.setDept(oaEmployee.getDept());
-        dto.setInService(oaEmployee.getInService());
-        dto.setEntryDate(oaEmployee.getEntryDate());
-        dto.setCreateTime(oaEmployee.getCreateTime());
-        dto.setOfficeLocation(oaEmployee.getOfficeLocation());
-        return dto;
+        return oaEmployeeRepository.findAll(spec, pageable).map(OaEmployeeDto::convertToDto);
     }
 
     /**
      * 輔助方法：根據請求參數構造 Sort 對象，並校驗字段的安全性。
      */
     private Sort createSort(String sortBy, String sortOrder) {
-        if (!StringUtils.hasText(sortBy) || !ALLOWED_SORT_FIELDS.contains(sortBy)) {
+        if (!StringUtils.isNotEmpty(sortBy) || !ALLOWED_SORT_FIELDS.contains(sortBy)) {
             // 如果未指定排序字段或字段不合法，則使用默認排序
             return Sort.by("createTime").descending(); // 默認按創建時間降序
         }
@@ -240,30 +238,73 @@ public class OaEmployeeService {
         return existing;
     }
 
+    @Transactional(readOnly = true)
     public List<OaEmployeeDto> findAllEmployee() {
-        return oaEmployeeRepository.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
+        return oaEmployeeRepository.findAll().stream().map(OaEmployeeDto::convertToDto).collect(Collectors.toList());
     }
 
     @Transactional
-    public void saveSyncEmployeeData(EmployeeSyncRequest request) {
-        EmployeeSyncQueue syncQueue;
-        syncQueue = employeeSyncQueueRepository.findByPin(request.getPin());
-        if (syncQueue == null) {
-            syncQueue = new EmployeeSyncQueue();
+    public void saveSyncEmployeeDataList(List<EmployeeSyncRequest> requestList) {
+        List<EmployeeSyncQueue> syncQueues = new ArrayList<>();
+        for (EmployeeSyncRequest request : requestList) {
+            syncQueues.addAll(saveSyncEmployeeData(request));
         }
-        syncQueue.setPin(request.getPin());
-        syncQueue.setName(request.getName());
-        syncQueue.setPri(request.getPri());
-        syncQueue.setFingerprint(request.getFingerprint());
-        syncQueue.setVerify(request.getVerify());
-        syncQueue.setValid(request.getValid());
-        syncQueue.setFid(request.getFid());
-        syncQueue.setTargetDeviceSn(request.getDeviceSn());
-        syncQueue.setPhotoBase64(request.getPhotoBase64());
-        syncQueue.setFingerSize(request.getFingerSize());
-        syncQueue.setPhotoSize(request.getPhotoSize());
-        syncQueue.setPasswd(request.getPasswd());
-        syncQueue.setStatus(0);
+
+        if (!syncQueues.isEmpty()) {
+            syncService.syncUserToDevices(syncQueues);
+        }
+    }
+
+    @Transactional
+    public List<EmployeeSyncQueue> saveSyncEmployeeData(EmployeeSyncRequest request) {
+        List<EmployeeSyncQueue> syncQueues = new ArrayList<>();
+        EmployeeSyncQueue syncQueue;
+
+        if (request.getFingerFidList() == null || request.getFingerFidList().isEmpty()) {
+            syncQueue = employeeSyncQueueRepository.findByPinAndFid(request.getPin(), 0);
+            if (syncQueue == null) {
+                syncQueue = new EmployeeSyncQueue();
+            }
+            syncQueue.setPin(request.getPin());
+            syncQueue.setName(request.getName());
+            syncQueue.setPri(request.getPri());
+            syncQueue.setVerify(request.getVerify());
+            syncQueue.setValid(request.getValid());
+            syncQueue.setFid(0);
+            syncQueue.setTargetDeviceSn(request.getDeviceSn());
+            syncQueue.setStatus(0);
+
+            employeeSyncQueueRepository.save(syncQueue);
+            syncQueues.add(syncQueue);
+        } else {
+            for (EmployeeFingerFidDto dto : request.getFingerFidList()) {
+                if (StringUtils.isNotEmpty(dto.getType()) && dto.getType().equals("photo")) {
+                    syncQueue = employeeSyncQueueRepository.findByPinAndType(request.getPin(), dto.getType());
+                } else {
+                    syncQueue = employeeSyncQueueRepository.findByPinAndFid(request.getPin(), dto.getFid());
+                }
+                if (syncQueue == null) {
+                    syncQueue = new EmployeeSyncQueue();
+                }
+                if (StringUtils.isNotEmpty(dto.getType())) {
+                    syncQueue.setPin(request.getPin());
+                    syncQueue.setName(request.getName());
+                    syncQueue.setPri(request.getPri());
+                    syncQueue.setVerify(request.getVerify());
+                    syncQueue.setValid(request.getValid());
+                    syncQueue.setTargetDeviceSn(request.getDeviceSn());
+                    syncQueue.setPasswd(request.getPasswd());
+                    syncQueue.setStatus(0);
+                    syncQueue.setFid(dto.getFid());
+                    syncQueue.setBase64Data(dto.getBase64Data());
+                    syncQueue.setBase64Size(dto.getBase64Data().trim().length());
+                    syncQueue.setType(dto.getType());
+
+                    employeeSyncQueueRepository.save(syncQueue);
+                    syncQueues.add(syncQueue);
+                }
+            }
+        }
 
         Optional<OaEmployee> optional = oaEmployeeRepository.findByPin(request.getPin());
         if (optional.isPresent()) {
@@ -272,8 +313,7 @@ public class OaEmployeeService {
 
             oaEmployeeRepository.save(oaEmployee);
         }
-
-        employeeSyncQueueRepository.save(syncQueue);
+        return syncQueues;
     }
 
     /**

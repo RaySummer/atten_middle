@@ -9,6 +9,9 @@ import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 @Data
 @Getter
@@ -27,13 +30,10 @@ public class OaEmployeeDto extends BaseDto implements Serializable {
     private String officeLocation; //办公地点
     //    @JsonFormat(pattern = "yyyy-MM-dd hh:mm:ss")
     private LocalDateTime entryDate; // 入職時間
-    private String fingerprint;
+
     private String photoBase64;
-    //手指编号，取值为0到9
-    private Integer fid;
-    //指纹模版二进制数据经过base64编码之后的长度
-    private Integer fingerSize;
-    private Integer photoSize;
+
+    private List<EmployeeSyncDto> syncList = new ArrayList<>();
 
     public static OaEmployeeDto convertToDto(OaEmployee emp) {
         if (emp == null) {
@@ -51,6 +51,31 @@ public class OaEmployeeDto extends BaseDto implements Serializable {
         dto.setOfficeLocation(emp.getOfficeLocation());
         dto.setEntryDate(emp.getEntryDate());
         dto.setCreateTime(emp.getCreateTime());
+
+        List<EmployeeSyncDto> employeeSyncDtoList = convertSyncData(emp.getSyncQueue());
+        if (!employeeSyncDtoList.isEmpty()) {
+            dto.getSyncList().addAll(convertSyncData(emp.getSyncQueue()));
+        }
         return dto;
     }
+
+    private static List<EmployeeSyncDto> convertSyncData(Set<EmployeeSyncQueue> queues) {
+        if (queues == null || queues.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<EmployeeSyncDto> list = new ArrayList<>();
+        for (EmployeeSyncQueue que :
+                queues) {
+            EmployeeSyncDto dto = new EmployeeSyncDto();
+            dto.setBase64Data(que.getBase64Data());
+            dto.setFid(que.getFid());
+            dto.setPin(que.getPin());
+            dto.setType(que.getType());
+            dto.setUuid(que.getUuid());
+
+            list.add(dto);
+        }
+        return list;
+    }
+
 }

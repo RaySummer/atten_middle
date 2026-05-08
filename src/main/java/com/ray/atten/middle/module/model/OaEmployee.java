@@ -12,6 +12,7 @@ import org.hibernate.annotations.ParamDef;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -43,8 +44,8 @@ public class OaEmployee extends BaseEntity implements Serializable {
 
     private LocalDateTime entryDate; // 入職時間
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToMany(fetch = FetchType.LAZY)
     @JoinColumn(name = "pin", referencedColumnName = "pin", insertable = false, updatable = false)
-    private EmployeeSyncQueue syncQueue;
+    private Set<EmployeeSyncQueue> syncQueue;
 
 }

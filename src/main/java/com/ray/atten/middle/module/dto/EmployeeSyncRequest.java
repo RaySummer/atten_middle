@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Getter
 @Setter
@@ -20,8 +21,8 @@ public class EmployeeSyncRequest extends BaseDto implements Serializable {
     //验证方式0自动识别 1指纹 15人脸
     private Integer verify;
 
-    // 指纹模板 (Base64字符串)
-    private String fingerprint;
+//    // 指纹模板 (Base64字符串)
+//    private String fingerprint;
 
     // --- 修改点：照片改为 Base64 字符串存储 ---
     private String photoBase64;
@@ -32,13 +33,15 @@ public class EmployeeSyncRequest extends BaseDto implements Serializable {
     private String deviceSn;
 
     //描述模版0无效模版 1正常模版
-    private Integer valid;
+    private Integer valid = 1;
 
-    //手指编号，取值为0到9
-    private Integer fid;
+//    //手指编号，取值为0到9
+//    private Integer fid;
 
-    //指纹模版二进制数据经过base64编码之后的长度
-    private Integer fingerSize;
+//    //指纹模版二进制数据经过base64编码之后的长度
+//    private Integer fingerSize;
+
+    private List<EmployeeFingerFidDto> fingerFidList;
 
     private Integer photoSize;
 

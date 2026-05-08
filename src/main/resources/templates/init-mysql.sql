@@ -199,3 +199,7 @@ END IF;
 END$$
 
 DELIMITER ;
+
+
+ALTER TABLE "public"."employee_sync_queue"
+DROP CONSTRAINT "uk_mnuk7gsu8qg9v6q14yvnjnoxa";

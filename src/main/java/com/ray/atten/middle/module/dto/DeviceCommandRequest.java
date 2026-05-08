@@ -51,4 +51,8 @@ public class DeviceCommandRequest extends BaseDto implements Serializable {
      */
     private String FID;
 
+    private Integer type = 0;
+
+    private String tmp;
+
 }

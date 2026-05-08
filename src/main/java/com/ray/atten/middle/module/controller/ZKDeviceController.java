@@ -213,42 +213,53 @@ public class ZKDeviceController {
             log.error("Error reading devicecmd body: " + e.getMessage());
         }
 
-        // 1. 尝试从 Query 或 Body 中提取 Return 和 CMD
-        String returnCode = request.getParameter("Return");
-        String cmdContent = request.getParameter("CMD");
-        String cmdId = request.getParameter("ID");
-
         if (!bodyData.isEmpty()) {
-            // 使用 & 符号分割参数
-            String[] params = bodyData.split("&");
+            String[] params = bodyData.split("ID=");
             for (String param : params) {
-                String[] keyValue = param.split("=");
-                if (keyValue.length == 2) {
-                    String key = keyValue[0].trim();
-                    String value = keyValue[1].trim();
-
-                    if (key.equalsIgnoreCase("Return")) {
-                        returnCode = value;
-                    } else if (key.equalsIgnoreCase("CMD")) {
-                        cmdContent = value;
-                    } else if (key.equalsIgnoreCase("ID")) {
-                        cmdId = value;
-                    }
-                    // 也可以打印 ID，方便追踪
-                    if (key.equalsIgnoreCase("ID")) {
-                        log.debug("Callback CMD ID: " + value);
-                    }
+                System.out.println(" BodyData ---->  ");
+                if (StringUtils.isNotEmpty(param)) {
+                    System.out.println("ID=" + param);
+                    commandService.processCommandCallback(sn, "ID=" + param);
                 }
             }
         }
 
-        // 2. 调用 CommandService 处理结果 (继续使用旧逻辑)
-        if (returnCode != null) { // 只需要 Return，因为 CMD 可能是空的
-            // 如果 Return=-1002，CommandService 会将指令标记为 FAILED
-            commandService.processCommandCallback(sn, cmdContent, returnCode, cmdId);
-        } else {
-            log.error("DeviceCMD callback missing Return info.");
-        }
+//        // 1. 尝试从 Query 或 Body 中提取 Return 和 CMD
+//        String returnCode = request.getParameter("Return");
+//        String cmdContent = request.getParameter("CMD");
+//        String cmdId = request.getParameter("ID");
+//
+//        if (!bodyData.isEmpty()) {
+//            // 使用 & 符号分割参数
+//            String[] params = bodyData.split("&");
+//            for (String param : params) {
+//                String[] keyValue = param.split("=");
+//                if (keyValue.length == 2) {
+//                    String key = keyValue[0].trim();
+//                    String value = keyValue[1].trim();
+//
+//                    if (key.equalsIgnoreCase("Return")) {
+//                        returnCode = value;
+//                    } else if (key.equalsIgnoreCase("CMD")) {
+//                        cmdContent = value;
+//                    } else if (key.equalsIgnoreCase("ID")) {
+//                        cmdId = value;
+//                    }
+//                    // 也可以打印 ID，方便追踪
+//                    if (key.equalsIgnoreCase("ID")) {
+//                        log.debug("Callback CMD ID: " + value);
+//                    }
+//                }
+//            }
+//        }
+//
+//        // 2. 调用 CommandService 处理结果 (继续使用旧逻辑)
+//        if (returnCode != null) { // 只需要 Return，因为 CMD 可能是空的
+//            // 如果 Return=-1002，CommandService 会将指令标记为 FAILED
+//            commandService.processCommandCallback(sn, cmdContent, returnCode, cmdId);
+//        } else {
+//            log.error("DeviceCMD callback missing Return info.");
+//        }
 
         // 必须返回 OK，告知设备服务器已收到结果。
         return "OK";
@@ -284,38 +295,39 @@ public class ZKDeviceController {
         }
         for (String sn : commandRequest.getDeviceSns()) {
             StringBuffer sb = new StringBuffer();
-            sb.append(commandRequest.getCmd());
-            if (StringUtils.isNoneEmpty(commandRequest.getRecode())) {
-                sb.append(" ");
-                sb.append(commandRequest.getRecode());
-            }
-            if (StringUtils.isNoneEmpty(commandRequest.getTable())) {
-                sb.append(" ");
-                sb.append(commandRequest.getTable());
-            }
-            if ("USERINFO".equalsIgnoreCase(commandRequest.getTable())) {
-                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
-                    sb.append(" PIN=");
-                    sb.append(commandRequest.getPin());
-                }
-            }
-            if ("FINGERTMP".equalsIgnoreCase(commandRequest.getTable())) {
-                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
-                    sb.append(" PIN=");
-                    sb.append(commandRequest.getPin());
-                    sb.append(" ");
-                }
-                if (StringUtils.isNoneEmpty(commandRequest.getFID())) {
-                    sb.append(" FID=");
-                    sb.append(commandRequest.getFID());
-                }
-            }
-            if (StringUtils.isNotEmpty(commandRequest.getStartTime()) && StringUtils.isNotEmpty(commandRequest.getEndTime())) {
-                sb.append(" StartTime=");
-                sb.append(commandRequest.getStartTime());
-                sb.append(" EndTime=");
-                sb.append(commandRequest.getEndTime());
-            }
+//            sb.append(commandRequest.getCmd());
+//            if (StringUtils.isNoneEmpty(commandRequest.getRecode())) {
+//                sb.append(" ");
+//                sb.append(commandRequest.getRecode());
+//            }
+//            if (StringUtils.isNoneEmpty(commandRequest.getTable())) {
+//                sb.append(" ");
+//                sb.append(commandRequest.getTable());
+//            }
+//            if ("USERINFO".equalsIgnoreCase(commandRequest.getTable())) {
+//                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
+//                    sb.append(" PIN=");
+//                    sb.append(commandRequest.getPin());
+//                }
+//            }
+//            if ("FINGERTMP".equalsIgnoreCase(commandRequest.getTable())) {
+//                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
+//                    sb.append(" PIN=");
+//                    sb.append(commandRequest.getPin());
+//                    sb.append(" ");
+//                }
+//                if (StringUtils.isNoneEmpty(commandRequest.getFID())) {
+//                    sb.append(" FID=");
+//                    sb.append(commandRequest.getFID());
+//                }
+//            }
+//            if (StringUtils.isNotEmpty(commandRequest.getStartTime()) && StringUtils.isNotEmpty(commandRequest.getEndTime())) {
+//                sb.append(" StartTime=");
+//                sb.append(commandRequest.getStartTime());
+//                sb.append(" EndTime=");
+//                sb.append(commandRequest.getEndTime());
+//            }
+            sb.append(commandRequest.getRecode());
 
             commandService.saveNewCommand(sn, sb.toString());
         }

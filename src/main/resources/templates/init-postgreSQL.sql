@@ -117,3 +117,7 @@ UPDATE sys_operation_log SET uuid = uuid_generate_v4()::text WHERE uuid IS NULL;
 ALTER TABLE sys_operation_log ALTER COLUMN uuid SET DEFAULT uuid_generate_v4()::text;
 ALTER TABLE sys_operation_log ALTER COLUMN uuid SET NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sys_operation_log_uuid ON sys_operation_log(uuid);
+
+
+ALTER TABLE "public"."employee_sync_queue"
+DROP CONSTRAINT "uk_mnuk7gsu8qg9v6q14yvnjnoxa";

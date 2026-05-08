@@ -8,7 +8,6 @@ import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,30 +33,24 @@ public class EmployeeSyncQueue extends BaseEntity implements Serializable {
     //验证方式0自动识别 1指纹 15人脸
     private Integer verify;
 
-    // 指纹模板 (Base64字符串)
-    @Column(columnDefinition = "TEXT")
-    private String fingerprint;
-
-    // --- 修改点：照片改为 Base64 字符串存储 ---
+    //指纹或照片 base64后的数据存储字段
     @Column(columnDefinition = "TEXT")
     @Type(type = "text")
-    private String photoBase64;
+    private String base64Data;
 
     // 0: 待同步, 1: 已处理
     private Integer status;
 
     //：描述模版0无效模版 1正常模版
-    private Integer valid;
+    private Integer valid = 1;
 
     //手指编号，取值为0到9
-    private Integer fid;
+    private Integer fid = 0;
 
-    //指纹模版二进制数据经过base64编码之后的长度
-    private Integer fingerSize;
+    //base64编码长度
+    private Integer base64Size;
 
-    private Integer photoSize;
-
-    //生物识别类型0通用的 1指纹 2面部 9可见光面部
+    //指纹   照片
     private String type;
 
     private String cardNo;
@@ -68,6 +61,16 @@ public class EmployeeSyncQueue extends BaseEntity implements Serializable {
     //是否覆盖 0不覆盖返回错误，1覆盖
     private Integer overwrite;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "pin",
+            referencedColumnName = "pin",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT) // 关键：禁止生成外键约束
+    )
+    private OaEmployee oaEmployee;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -75,10 +78,9 @@ public class EmployeeSyncQueue extends BaseEntity implements Serializable {
         if (this.pri == null) this.pri = 0;
         if (this.verify == null) this.verify = 0;
         if (this.valid == null) this.valid = 1;
-        if (this.fingerSize == null) this.fingerSize = 0;
-        if (this.photoSize == null) this.photoSize = 0;
+        if (this.base64Size == null) this.base64Size = 0;
         if (this.retry == null) this.retry = 0;
-        if (this.overwrite == null) this.overwrite = 0;
+        if (this.overwrite == null) this.overwrite = 1;
     }
 
 }

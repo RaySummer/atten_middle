@@ -11,10 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -134,11 +131,16 @@ public class CardTemplateService {
 
                     // --- 核心修改：从 EmployeeSyncQueue 提取照片和指纹 ---
                     if (emp.getSyncQueue() != null) {
-                        EmployeeSyncQueue sync = emp.getSyncQueue();
+                        Set<EmployeeSyncQueue> syncQueue = emp.getSyncQueue();
+                        for (EmployeeSyncQueue que : syncQueue) {
+                            if (que.getType().equalsIgnoreCase("photo")) {
+                                // 将 sync 表中的照片赋值给 DTO
+                                // 确保你的 OaEmployeeDto 中有对应的字段 (例如 photoBase64)
+                                dto.setPhotoBase64(que.getBase64Data());
+                            }
+                        }
 
-                        // 将 sync 表中的照片赋值给 DTO
-                        // 确保你的 OaEmployeeDto 中有对应的字段 (例如 photoBase64)
-                        dto.setPhotoBase64(sync.getPhotoBase64());
+
                     }
                     return dto;
                 })
