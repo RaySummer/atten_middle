@@ -327,7 +327,7 @@ public class ZKDeviceController {
                 sb.append(" EndTime=");
                 sb.append(commandRequest.getEndTime());
             }
-            sb.append(commandRequest.getRecode());
+//            sb.append(commandRequest.getRecode());
 
             commandService.saveNewCommand(sn, sb.toString());
         }
