@@ -295,38 +295,38 @@ public class ZKDeviceController {
         }
         for (String sn : commandRequest.getDeviceSns()) {
             StringBuffer sb = new StringBuffer();
-//            sb.append(commandRequest.getCmd());
-//            if (StringUtils.isNoneEmpty(commandRequest.getRecode())) {
-//                sb.append(" ");
-//                sb.append(commandRequest.getRecode());
-//            }
-//            if (StringUtils.isNoneEmpty(commandRequest.getTable())) {
-//                sb.append(" ");
-//                sb.append(commandRequest.getTable());
-//            }
-//            if ("USERINFO".equalsIgnoreCase(commandRequest.getTable())) {
-//                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
-//                    sb.append(" PIN=");
-//                    sb.append(commandRequest.getPin());
-//                }
-//            }
-//            if ("FINGERTMP".equalsIgnoreCase(commandRequest.getTable())) {
-//                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
-//                    sb.append(" PIN=");
-//                    sb.append(commandRequest.getPin());
-//                    sb.append(" ");
-//                }
-//                if (StringUtils.isNoneEmpty(commandRequest.getFID())) {
-//                    sb.append(" FID=");
-//                    sb.append(commandRequest.getFID());
-//                }
-//            }
-//            if (StringUtils.isNotEmpty(commandRequest.getStartTime()) && StringUtils.isNotEmpty(commandRequest.getEndTime())) {
-//                sb.append(" StartTime=");
-//                sb.append(commandRequest.getStartTime());
-//                sb.append(" EndTime=");
-//                sb.append(commandRequest.getEndTime());
-//            }
+            sb.append(commandRequest.getCmd());
+            if (StringUtils.isNoneEmpty(commandRequest.getRecode())) {
+                sb.append(" ");
+                sb.append(commandRequest.getRecode());
+            }
+            if (StringUtils.isNoneEmpty(commandRequest.getTable())) {
+                sb.append(" ");
+                sb.append(commandRequest.getTable());
+            }
+            if ("USERINFO".equalsIgnoreCase(commandRequest.getTable())) {
+                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
+                    sb.append(" PIN=");
+                    sb.append(commandRequest.getPin());
+                }
+            }
+            if ("FINGERTMP".equalsIgnoreCase(commandRequest.getTable())) {
+                if (StringUtils.isNoneEmpty(commandRequest.getPin())) {
+                    sb.append(" PIN=");
+                    sb.append(commandRequest.getPin());
+                    sb.append(" ");
+                }
+                if (StringUtils.isNoneEmpty(commandRequest.getFID())) {
+                    sb.append(" FID=");
+                    sb.append(commandRequest.getFID());
+                }
+            }
+            if (StringUtils.isNotEmpty(commandRequest.getStartTime()) && StringUtils.isNotEmpty(commandRequest.getEndTime())) {
+                sb.append(" StartTime=");
+                sb.append(commandRequest.getStartTime());
+                sb.append(" EndTime=");
+                sb.append(commandRequest.getEndTime());
+            }
             sb.append(commandRequest.getRecode());
 
             commandService.saveNewCommand(sn, sb.toString());
