@@ -19,6 +19,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long>, JpaSpecif
     // 根据序列号查找设备，用于判断是新增还是更新
     Device findByDeviceSn(String deviceSn);
 
+    @Query(nativeQuery = true,value = "SELECT * FROM devices where active is true")
     List<Device> findByActiveTrue();
 
     /**

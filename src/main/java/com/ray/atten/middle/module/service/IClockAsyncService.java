@@ -44,29 +44,33 @@ public class IClockAsyncService {
             // 根據您的描述，這裡應該嘗試 GBK
             bodyData = new String(dataBuffer, 0, dataLength, DEFAULT_ENCODING);
 
-            // 2. 業務邏輯判斷和調用 (耗時操作)
-            if ("USERINFO".equalsIgnoreCase(table)) {
-                // deviceSyncService.processUserInfo(sn, bodyData);
-                log.debug("--- 異步處理 USERINFO 數據... ---");
-            } else if ("ATTLOG".equalsIgnoreCase(table)) {
-                // 這裡調用您原來的服務方法
-                attendanceService.processAttLogData(sn, bodyData);
-                log.debug("--- 異步收到設備[" + sn + "] 考勤記錄並保存... ---");
-            } else if ("BIODATA".equalsIgnoreCase(table)) {
-                employeeService.processBioData(sn, bodyData);
-                log.debug("--- 異步保存 BIODATA 數據... ---");
-            } else {
-                log.debug("--- 異步處理其他類型數據: " + table + " ---");
-            }
+            process(table, sn, bodyData);
 
         } catch (UnsupportedEncodingException e) {
             log.debug("字符集轉換失敗，嘗試 UTF-8。");
             // 如果 GBK 失敗，嘗試 UTF-8
             bodyData = new String(dataBuffer, 0, dataLength, StandardCharsets.UTF_8);
-            // 這裡可以選擇重試或記錄錯誤
+            process(table, sn, bodyData);
         } catch (Exception e) {
             log.debug("異步處理考勤數據時發生業務異常: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void process(String table, String sn, String bodyData) {
+        // 2. 業務邏輯判斷和調用 (耗時操作)
+        if ("USERINFO".equalsIgnoreCase(table)) {
+            // deviceSyncService.processUserInfo(sn, bodyData);
+            log.debug("--- 異步處理 USERINFO 數據... ---");
+        } else if ("ATTLOG".equalsIgnoreCase(table)) {
+            // 這裡調用您原來的服務方法
+            attendanceService.processAttLogData(sn, bodyData);
+            log.debug("--- 異步收到設備[" + sn + "] 考勤記錄並保存... ---");
+        } else if ("BIODATA".equalsIgnoreCase(table)) {
+            employeeService.processBioData(sn, bodyData);
+            log.debug("--- 異步保存 BIODATA 數據... ---");
+        } else {
+            log.debug("--- 異步處理其他類型數據: " + table + " ---");
         }
     }
 }
