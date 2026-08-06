@@ -8,6 +8,7 @@ import com.ray.atten.middle.module.repository.CardTemplateRepository;
 import com.ray.atten.middle.module.repository.OaEmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -133,7 +134,7 @@ public class CardTemplateService {
                     if (emp.getSyncQueue() != null) {
                         Set<EmployeeSyncQueue> syncQueue = emp.getSyncQueue();
                         for (EmployeeSyncQueue que : syncQueue) {
-                            if (que.getType().equalsIgnoreCase("photo")) {
+                            if (StringUtils.isNotEmpty(que.getType()) && que.getType().equalsIgnoreCase("photo")) {
                                 // 将 sync 表中的照片赋值给 DTO
                                 // 确保你的 OaEmployeeDto 中有对应的字段 (例如 photoBase64)
                                 dto.setPhotoBase64(que.getBase64Data());

@@ -105,7 +105,7 @@ public class OaEmployeeService {
                 query.orderBy(
                         cb.asc(cb.max(fingerPoint)),
                         cb.asc(cb.max(photoPoint)),
-                        cb.desc(root.get("entryDate"))
+                        cb.desc(root.get("createTime"))
                 );
             }
 
@@ -319,7 +319,6 @@ public class OaEmployeeService {
     /**
      * 批量从文件夹更新员工头像
      *
-     * @param
      */
     @Transactional
     public void batchUpdatePhotosFromFolder() {

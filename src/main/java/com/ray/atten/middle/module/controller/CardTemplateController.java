@@ -95,7 +95,6 @@ public class CardTemplateController {
             // 这里可以直接将 request 传入 Service 处理逻辑
             return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", cardTemplateService.saveTemplate(request)));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "保存失败"));
         }
     }
@@ -108,7 +107,6 @@ public class CardTemplateController {
         try {
             return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", cardTemplateService.findAllActive()));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "获取列表失败"));
         }
     }
@@ -123,7 +121,6 @@ public class CardTemplateController {
             cardTemplateService.deleteTemplateByUuid(uuid);
             return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "删除模板成功"));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "删除模板失败"));
         }
     }
@@ -138,7 +135,6 @@ public class CardTemplateController {
             cardTemplateService.toggleActiveByUuid(uuid);
             return ResponseEntity.ok(new GlobalResponseBody("200", "SUCCESS", "修改模板状态成功"));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.ok(new GlobalResponseBody("500", "ERROR", "修改模板状态失败"));
         }
     }
