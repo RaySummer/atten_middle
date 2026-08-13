@@ -78,11 +78,17 @@ public class OaEmployeeService {
                 predicates.add(cb.equal(root.get("inService"), request.getInService()));
             }
 
-            // --- 排序逻辑 (关键点) ---
+            // --- 排序逻辑 ---
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
 
-                // 定义指纹和照片的单行权重
-                // 只要这一行是 finger 且长度够，设为 1，否则 0
+                // 1. 离职/在职 排序权重：在职(true/1)设为 0，离职(false/0)设为 1
+                // 升序(ASC)排序后，在职(0)在前，离职(1)在后
+                Expression<Integer> inServicePoint = cb.selectCase()
+                        .when(cb.equal(root.get("inService"), true), 0) // 如果实体类是 Integer/Byte，换成对应的 1 或 0
+                        .otherwise(1)
+                        .as(Integer.class);
+
+                // 2. 定义指纹和照片的单行权重
                 Expression<Integer> fingerPoint = cb.selectCase()
                         .when(cb.and(
                                 cb.equal(syncJoin.get("type"), "finger"),
@@ -100,11 +106,15 @@ public class OaEmployeeService {
                 // 关键：必须分组，否则 Join 会导致数据重复
                 query.groupBy(root.get("id"));
 
-                // 排序：使用 max 聚合。如果员工有任何一条指纹记录，max 就是 1
-                // ASC 排序：0（未录入）排在 1（已录入）前面
+                // 排序规则说明：
+                // 1. inServicePoint ASC -> 在职在前，离职在后
+                // 2. fingerPoint ASC     -> 未录指纹在前
+                // 3. photoPoint ASC      -> 未录照片在前
+                // 4. createTime DESC     -> 最新创建在前
                 query.orderBy(
-                        cb.asc(cb.max(fingerPoint)),
-                        cb.asc(cb.max(photoPoint)),
+//                        cb.asc(inServicePoint),
+//                        cb.asc(cb.max(fingerPoint)),
+//                        cb.asc(cb.max(photoPoint)),
                         cb.desc(root.get("createTime"))
                 );
             }
